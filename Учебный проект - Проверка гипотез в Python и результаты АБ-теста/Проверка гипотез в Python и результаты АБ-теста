@@ -1,0 +1,6414 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "_E41Wr5fqnFT",
+   "metadata": {
+    "id": "_E41Wr5fqnFT"
+   },
+   "source": [
+    "# Часть 1. Проверка гипотезы в Python и составление аналитической записки"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "Z5_6nf-FrY7o",
+   "metadata": {
+    "id": "Z5_6nf-FrY7o"
+   },
+   "source": [
+    "Вы предобработали данные в SQL, и теперь они готовы для проверки гипотезы в Python. Загрузите данные пользователей из Москвы и Санкт-Петербурга c суммой часов их активности из файла yandex_knigi_data.csv. Если работаете локально, скачать файл можно по ссылке.\n",
+    "\n",
+    "Проверьте наличие дубликатов в идентификаторах пользователей. Сравните размеры групп, их статистики и распределение.\n",
+    "\n",
+    "Напомним, как выглядит гипотеза: пользователи из Москвы проводят в среднем больше времени за чтением и прослушиванием книг в приложении, чем пользователи из Санкт-Петербурга. Попробуйте статистически это доказать, используя одностороннюю проверку гипотезы с двумя выборками:\n",
+    "\n",
+    "Нулевая гипотеза $H_0: \\mu_{\\text{СПб}} \\leq \\mu_{\\text{Москва}}$ <br> Среднее время активности пользователей в Санкт-Петербурге не больше, чем в Москве.\n",
+    "\n",
+    "Альтернативная гипотеза $H_1: \\mu_{\\text{СПб}} > \\mu_{\\text{Москва}}$ <br> Среднее время активности пользователей в Санкт-Петербурге больше, и это различие статистически значимо.\n",
+    "\n",
+    "По результатам анализа данных подготовьте аналитическую записку, в которой опишите:\n",
+    "\n",
+    "Выбранный тип t-теста и уровень статистической значимости.\n",
+    "\n",
+    "Результат теста, или p-value.\n",
+    "\n",
+    "Вывод на основе полученного p-value, то есть интерпретацию результатов.\n",
+    "\n",
+    "Одну или две возможные причины, объясняющие полученные результаты."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "e06910dd",
+   "metadata": {
+    "id": "e06910dd"
+   },
+   "source": [
+    "## Напишите заголовок первой части проекта здесь\n",
+    "\n",
+    "- Автор: Сумароков Сергей\n",
+    "- Дата: 04.05.2025"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "4149134c",
+   "metadata": {
+    "id": "4149134c"
+   },
+   "source": [
+    "## Цели и задачи проекта\n",
+    "\n",
+    "Цель проекта - проверить гипотезу о том, что пользователи из Санкт-Петербурга проводят в среднем больше времени за чтением и прослушиванием книг в приложении, чем пользователи из Москвы, на основе данных об их активности.\n",
+    "\n",
+    "Задачи проекта:\n",
+    "- Загрузить и подготовить данные\n",
+    "- Провести исследовательский аналих данных\n",
+    "- Проверить гипотезы\n",
+    "- Интерпретировать полученные результаты\n",
+    "- Подготовить аналитическсую записку "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "728986ea",
+   "metadata": {
+    "id": "728986ea"
+   },
+   "source": [
+    "## Описание данных\n",
+    "\n",
+    "Для работы представлена таблица `yandex_knigi_data.csv`, которая содержит в себе поля:\n",
+    "\n",
+    "- `Unnamed: 0` - индекс, оставшийся после выгрузки данных;\n",
+    "- `city` - город, в котором проживает пользователь;\n",
+    "- `puid` - уникальный id пользователя;\n",
+    "- `hours` - сумма часов активности пользователей."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "4fecaf95",
+   "metadata": {
+    "id": "4fecaf95"
+   },
+   "source": [
+    "## Содержимое проекта\n",
+    "\n",
+    "1. Загрузка данных и знакомство с ними\n",
+    "2. Проверка гипотезы в Python\n",
+    "3. Аналитическая записка"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "22d2d5ec",
+   "metadata": {},
+   "source": [
+    " <div class=\"alert alert-success\">\n",
+    "<h2> Комментарий ревьюера <a class=\"tocSkip\"> </h2>\n",
+    " \n",
+    "<b>Все отлично!👍:</b> \n",
+    "    \n",
+    "Вижу отличное введение в проект! Есть цель и задачи работы, описание исходных  данных)\n",
+    "    \n",
+    "Такой детальный подход важен, чтобы твой будущий работодатель знал все ключевые моменты проекта и мог объективно оценить принимаемые тобой решения"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "ea95e044",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Импортируем необходимые библиотеки для выполнения проекта\n",
+    "import pandas as pd\n",
+    "import matplotlib.pyplot as plt\n",
+    "import scipy.stats as stats\n",
+    "\n",
+    "from scipy.stats import mannwhitneyu\n",
+    "from scipy.stats import ttest_ind\n",
+    "from statsmodels.stats.proportion import proportions_ztest"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "6f7d21d6",
+   "metadata": {
+    "id": "6f7d21d6"
+   },
+   "source": [
+    "## 1. Загрузка данных и знакомство с ними\n",
+    "\n",
+    "Загрузите данные пользователей из Москвы и Санкт-Петербурга c их активностью (суммой часов чтения и прослушивания) из файла `/datasets/yandex_knigi_data.csv`."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "1ab94057",
+   "metadata": {},
+   "source": [
+    "### Загрузка данных"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "05faf34b",
+   "metadata": {
+    "id": "05faf34b"
+   },
+   "outputs": [],
+   "source": [
+    "# Загрузим данные из датасета\n",
+    "df = pd.read_csv('https://code.s3.yandex.net/datasets/yandex_knigi_data.csv')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "c36a252e",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "<class 'pandas.core.frame.DataFrame'>\n",
+      "RangeIndex: 8784 entries, 0 to 8783\n",
+      "Data columns (total 4 columns):\n",
+      " #   Column      Non-Null Count  Dtype  \n",
+      "---  ------      --------------  -----  \n",
+      " 0   Unnamed: 0  8784 non-null   int64  \n",
+      " 1   city        8784 non-null   object \n",
+      " 2   puid        8784 non-null   int64  \n",
+      " 3   hours       8784 non-null   float64\n",
+      "dtypes: float64(1), int64(2), object(1)\n",
+      "memory usage: 274.6+ KB\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Выведем основную информацию о датафрейме\n",
+    "df.info()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "2b3fc573",
+   "metadata": {},
+   "source": [
+    "Тип данных в колонах соотвествует из содержимому, пропусков не обнаружено."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "ce87c1db",
+   "metadata": {
+    "id": "ce87c1db"
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Unnamed: 0</th>\n",
+       "      <th>city</th>\n",
+       "      <th>puid</th>\n",
+       "      <th>hours</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>0</td>\n",
+       "      <td>Москва</td>\n",
+       "      <td>9668</td>\n",
+       "      <td>26.167776</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>1</td>\n",
+       "      <td>Москва</td>\n",
+       "      <td>16598</td>\n",
+       "      <td>82.111217</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>2</td>\n",
+       "      <td>Москва</td>\n",
+       "      <td>80401</td>\n",
+       "      <td>4.656906</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>3</td>\n",
+       "      <td>Москва</td>\n",
+       "      <td>140205</td>\n",
+       "      <td>1.840556</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>4</td>\n",
+       "      <td>Москва</td>\n",
+       "      <td>248755</td>\n",
+       "      <td>151.326434</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>...</th>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8779</th>\n",
+       "      <td>8779</td>\n",
+       "      <td>Санкт-Петербург</td>\n",
+       "      <td>1130000028554332</td>\n",
+       "      <td>4.107774</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8780</th>\n",
+       "      <td>8780</td>\n",
+       "      <td>Санкт-Петербург</td>\n",
+       "      <td>1130000030307246</td>\n",
+       "      <td>45.069222</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8781</th>\n",
+       "      <td>8781</td>\n",
+       "      <td>Санкт-Петербург</td>\n",
+       "      <td>1130000038726322</td>\n",
+       "      <td>0.211944</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8782</th>\n",
+       "      <td>8782</td>\n",
+       "      <td>Санкт-Петербург</td>\n",
+       "      <td>1130000047892100</td>\n",
+       "      <td>4.311841</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8783</th>\n",
+       "      <td>8783</td>\n",
+       "      <td>Санкт-Петербург</td>\n",
+       "      <td>1130000061443598</td>\n",
+       "      <td>20.847222</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>8784 rows × 4 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "      Unnamed: 0             city              puid       hours\n",
+       "0              0           Москва              9668   26.167776\n",
+       "1              1           Москва             16598   82.111217\n",
+       "2              2           Москва             80401    4.656906\n",
+       "3              3           Москва            140205    1.840556\n",
+       "4              4           Москва            248755  151.326434\n",
+       "...          ...              ...               ...         ...\n",
+       "8779        8779  Санкт-Петербург  1130000028554332    4.107774\n",
+       "8780        8780  Санкт-Петербург  1130000030307246   45.069222\n",
+       "8781        8781  Санкт-Петербург  1130000038726322    0.211944\n",
+       "8782        8782  Санкт-Петербург  1130000047892100    4.311841\n",
+       "8783        8783  Санкт-Петербург  1130000061443598   20.847222\n",
+       "\n",
+       "[8784 rows x 4 columns]"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "# Познакомимся с данными\n",
+    "display(df)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "9865487d",
+   "metadata": {},
+   "source": [
+    "В датафрейме повторяюся столбцы с индексом, для удобства уберем столбец `Unnamed: 0` из датафрейма."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "f68a7419",
+   "metadata": {
+    "id": "f68a7419"
+   },
+   "outputs": [],
+   "source": [
+    "df = df[['city', 'puid', 'hours']]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "0b010bff",
+   "metadata": {},
+   "source": [
+    "### Проверка данных на дубликаты"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "3d3733fc",
+   "metadata": {},
+   "source": [
+    "Для начала найдем количество явных дубликатов в датафрейме:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "0a96d9cf",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Количество явных дубликатов: 0\n"
+     ]
+    }
+   ],
+   "source": [
+    "dup = df.duplicated().sum()\n",
+    "print(f'Количество явных дубликатов: {dup}')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "ec9a0bf5",
+   "metadata": {},
+   "source": [
+    "Теперь проверим наличие дубликатов по полю `puid`:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "383089e2",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "В поле puid найдено дубликатов: 244 (3.0% от всех данных).\n"
+     ]
+    }
+   ],
+   "source": [
+    "dup_puid = df.duplicated(subset=['puid']).sum()\n",
+    "share = round(dup_puid / df['puid'].count(),2) * 100 \n",
+    "print(f'В поле puid найдено дубликатов: {dup_puid} ({share}% от всех данных).')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "d49dc217",
+   "metadata": {},
+   "source": [
+    "В поле `puid` оказалось 244 дубликата. Возможно, они появилисьиз-за нахождения одних и тех же пользователей в разных городах. Т.к количество дубликатов всего 3% от общего числа, можно удалить дубликаты чтобы сохранить независимость выборок для A/B теста."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "b5d20124",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Используем метод drop_duplicates для удаления дубликатов\n",
+    "df.drop_duplicates(subset=['puid'], keep=False, inplace=True)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "7ce586d2",
+   "metadata": {},
+   "source": [
+    "### Проверка данных на выбросы"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "a148ca40",
+   "metadata": {},
+   "source": [
+    "Выведем описательную статистику столбца `hours`:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "c9602427",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "count    8296.000000\n",
+       "mean       10.963892\n",
+       "std        37.753906\n",
+       "min         0.000022\n",
+       "25%         0.057493\n",
+       "50%         0.884214\n",
+       "75%         5.944675\n",
+       "max       978.764775\n",
+       "Name: hours, dtype: float64"
+      ]
+     },
+     "execution_count": 9,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Используем метод describe для столбца hours\n",
+    "df['hours'].describe()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "24ee87aa",
+   "metadata": {},
+   "source": [
+    "В столбце `hours`:\n",
+    "- всего 8296 строк\n",
+    "- минимальное значение - 0.000022\n",
+    "- среднее значение - 10.96\n",
+    "- медиана - 0.88\n",
+    "- стандартное отклонение - 37.75\n",
+    "- максимальное значение - 978.76\n",
+    "\n",
+    "В датафрейме нашелся человек, у которого суммарное количество прослушиваний составило 978 часов или почти 41 сутки беспрерывного прослушивания. Вполне вероятно, что это выброс в данных, который влияет на среднее значение - из-за этого оно сильно отличается от медианы.\n",
+    "\n",
+    "Чтобы избавиться от этого и ближайших к нему выбросов и сделать распределение данных более равномерным, используем фильтрацию по 95-му процентилю:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "37fc3c72",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "count    7881.000000\n",
+       "mean        4.733189\n",
+       "std         9.285352\n",
+       "min         0.000022\n",
+       "25%         0.047964\n",
+       "50%         0.710734\n",
+       "75%         4.383130\n",
+       "max        55.577836\n",
+       "Name: hours, dtype: float64"
+      ]
+     },
+     "execution_count": 10,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Фильтруем даннные по 95-му процентилю\n",
+    "filter95 = df['hours'].quantile(0.95)\n",
+    "df = df[df['hours'] <= filter95]\n",
+    "\n",
+    "# Снова выводим описательную статистику\n",
+    "df['hours'].describe()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "abd2e1c8",
+   "metadata": {},
+   "source": [
+    "После фильтрации из датафрейма удалилось около 500 строк и данные приобрели более равномерный вид. Значимые изменения в столбце `hours`:\n",
+    "- среднее значение - 4.73 (было 10.96)\n",
+    "- стандартное отклонение - 9.28 (было 37.75)\n",
+    "- максимальное значение - 55.57 (было 978.76)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "b0d1a3ff",
+   "metadata": {},
+   "source": [
+    "### Распеределение данных между группами"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "437821a8",
+   "metadata": {},
+   "source": [
+    "Теперь выделим две выборки из датафрейма `msc` для пользователей из Москвы и `spb` для пользователей из Санкт-Петербурга."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "id": "67956690",
+   "metadata": {
+    "id": "67956690"
+   },
+   "outputs": [],
+   "source": [
+    "# Выделяем выборки \n",
+    "msc = df[df['city'] == 'Москва']['hours']\n",
+    "spb = df[df['city'] == 'Санкт-Петербург']['hours']"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "da7e54b7",
+   "metadata": {},
+   "source": [
+    "Сравним средние значения часов прослушивания между выборками:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "c685c011",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Среднее значение активности пользователей в Москве 4.64\n",
+      "Среднее значение активности пользователей в Санкт-Петербурге 4.97\n"
+     ]
+    }
+   ],
+   "source": [
+    "print('Среднее значение активности пользователей в Москве', round(msc.mean(),2))\n",
+    "print('Среднее значение активности пользователей в Санкт-Петербурге', round(spb.mean(),2))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "490986e4",
+   "metadata": {},
+   "source": [
+    "После проверки датафрейма на выбросы среднее значение активности в Москве все еще меньше, чем в Санкт-Петербурге, однако, нельзя утверждать, что пользователи из Санкт-Петербурга действительно более активны."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "1220ba09",
+   "metadata": {},
+   "source": [
+    "Построим гистограмму и диаграмму размаха по столбцу `hours`, чтобы визуально оценить распределение между выборками:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "c7bda864",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "image/png": "iVBORw0KGgoAAAANSUhEUgAAA1sAAAHWCAYAAACBjZMqAAAAOnRFWHRTb2Z0d2FyZQBNYXRwbG90bGliIHZlcnNpb24zLjEwLjAsIGh0dHBzOi8vbWF0cGxvdGxpYi5vcmcvlHJYcgAAAAlwSFlzAAAPYQAAD2EBqD+naQAATtxJREFUeJzt3QeYE+Ua9vFnKUtn6bBIVVBEmiIKoijlgIIcETwqoqAgNlApAnJEig3FXkGPCjYULFjgSBEEjxRBFAUUFA4IHmmKFOmw+a77/b7Jl2SzlR2yu/n/rissSSaTycwkmTvv+z6TEAgEAgYAAAAAyFEFcnZ2AAAAAAAhbAEAAACADwhbAAAAAOADwhYAAAAA+ICwBQAAAAA+IGwBAAAAgA8IWwAAAADgA8IWAAAAAPiAsAUAAJDP7dq1y9atW2dHjx6N9aIAcYWwBQAAkM8cOXLExo0bZ40bN7YiRYpY2bJlrW7dujZ37txYLxoQVxICgUAg1gsBIHPWr1/vvjznzJljv/32myUmJlrDhg3tyiuvtJtuusmKFSsW60UEAMTYoUOHrH379rZkyRK75ZZbrG3btla8eHErWLCgNW3a1EqXLh3rRQTiRqFYLwCAzJkxY4b94x//cL9Q9uzZ0xo0aGCHDx+2L7/80oYMGWKrV6+2l156KdaLCQCIsUceecS++uormzVrll100UWxXhwgrtGyBeQBGzZssEaNGlm1atVs3rx5lpycHHa/+uErjN15550xW0YAQOxpTFalSpXs1ltvtQcffDDWiwPEPcZsAXmAug7+9ddf9sorr6QKWlKnTp2woJWQkGD9+/e3t956y0477TQrWrSo6zryxRdfhD3ul19+sdtuu81Noy6I5cuXd61nGzduDJtu0qRJbp7eRd1R1H3x5ZdfDpvu+uuvt5IlS6Zavvfee889bv78+WG365fXiy++2JKSktw8L7zwQlu4cGHYNKNHj3aP/f3338Nu//rrr93tWrbQ569Vq1bYdJs3b3avTdNGvq5PP/3ULrjgAitRooSVKlXKOnXq5FoIM+KtD63Pm2++2a03dctRi+Off/4ZNu1HH33k5lu1alXXKnnKKafY/fffb8eOHUs1X62Pjh07urEVWiYF7Keffjrs9YVuh8hL6PrVr9lq/Vy+fLmdd955bh3Url3bJkyYELXL0ahRo9x+pGWsXr26DR061N0eSc+R1vNH+t///me9e/e2ypUru/meccYZ9uqrr0Zdp2m9Nm3/UGvWrLErrrjCypUr5/brs88+2z7++OOo20f7SCjtQ5Hz9PavUHqvValSJeo+O378eLdetb+GLqf28czQdsnM65w4caK1adPGHTRr3dWvX989dyTt75deemmq2/X+j3xd3udCJD0+9H2j94mmfeyxx9J8HZHrTcur65Hb96GHHnK3//vf/05zXt7r8NZFgQIF3Pq/6qqrbNOmTek+LnKZo11C3/eZ+SzzXsu3336b6nn0etQVT/v2jz/+6N5Xet+HUm8DTTNs2LB0lzlyn9f7XvvHf/7zn0xt48j3pLevrl271n0O6TNNn6l6jfqM1TxWrVqV6vF6nZdccon7DNPnt7ocqvthdj/ztLx6baHUzV3v19D3U2Y+G493HQO5Ad0IgTzgk08+sZNPPtkdNGfWggULbMqUKXbHHXe4L7IXXnjBBZulS5e6g0VZtmyZLVq0yK6++mrXaqaDEh3Q6Qv/hx9+cF/SoZ588kmrUKGC7dmzxx1U9e3b132xtmvXLsuvSS10+oJXCNSBvg6wvANMHWycc845lhNGjhxpBw8eTHX7G2+8Yb169bIOHTq4Ljf79+93r/388893Bx+RoS0aHbiWKVPGHXjqAEePV4D1Dn68gxQdwAwaNMj91evWMmkdPvroo8F5aRyeDoYUphWcdbCpA43p06eHBWlty8iQq+34zDPPpFo+HQQpvGlMX/fu3W3q1Knu126N9VMIkpSUFPv73//uDl50QHT66afbypUr3bb+6aef7MMPP4z62rVfNWvWzP3/9ddfd8sfatu2bda8efPgAX7FihVduO3Tp4977QMGDEg1T+1bel7PddddF3a/gnDLli3tpJNOsrvvvtsFUr2mLl262Pvvv2+XX3655YTHH3/cLX8kvZ/044TeH7fffrt7fm0jHYBnhd5rY8eODQY7bZNI2pcUTrVtChUq5D4D9NzaXv369bPc5oYbbrAPPvjA7ed/+9vfXGDXfjRmzBi3zbUfZkQ/fGgf1GtUKHjqqafc2NTI8JEe7efecyngvf3221GnS++zTGFe61g/Vp155plhj9Nt2v7aB3VROFA3bj1G22rfvn0uaNSrV8/uu+++DJc3dJ//9ddf3Y8rWn79SKTPluz4448/3N/hw4e7ghjaBvoM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tWopcOmcTcWLF4/14iBExYoVbePGjXbkyJHjClsUyAAAAABiqEABDslzm5xqYWTLAgAAAIAPCFsAAAAA4APCFgAAAAD4gAIZAAAAQC5T6+4ZJ+y5Nj7cKcuPuf766+21116zm2++2SZMmBB2X79+/eyFF16wXr162aRJkyye0bIFAAAAIMtURfGdd96xAwcOBG87ePCgTZ482WrUqBHTZcstCFsAAAAAsuyss85ygeuDDz4I3qb/K2ideeaZwdsOHTpkd9xxh1WqVMmKFi1q559/vi1btixsXqtXr7ZLL73USpcubaVKlbILLrjA1q9fH2xF69KlS3DaTz/91J1sWH9FJdpVPdC7lCtXzrp27Wp//PFH8DFPPPGENWzY0EqUKOGW+bbbbrO//vrL/EbYAgAAAJAtvXv3tokTJwavv/rqq3bDDTeETTN06FB7//33XbfDb775xurUqWMdOnSwnTt3uvv/97//WatWraxIkSI2b948W758uZvv0aNHUz3ff/7zH7vyyivtlVdesUsuuSTsvs8++8y2bNliM2bMsKVLl9q4cePCyus/88wzLtRpOfQ8Wi6/MWYrzvrxZqdPLgAAABDNtddea8OHD7dffvnFXV+4cKHrWjh//nx3fd++fTZ+/Hg3dssLR//6179szpw5LjANGTLEnn/+eUtKSnKPK1y4sJvm1FNPTfVcCmqdO3e2xx9/3K666qpU95cvX96qVKni/l+sWDE3T8+AAQOC/69Vq5Y98MADdsstt7ixZX4ibAEAAADIlooVK1qnTp1cmAoEAu7/FSpUCN6/fv16O3LkiLVs2TJ4mwLVOeecYz/++KO7vmLFCtdt0Ata0WzYsMG1hmlM2EUXXRR1mvPOO8+1YCngtW7d2gYPHhzW6jV27Fhbs2aN7dmzx7WaaV779++34sWLm1/oRggAAAAg29TlT2FL3fP0/6wqVqxYhtN8//33duONN1qPHj3cc6SkpKSaZsqUKS64qavh7t277a677gqO6dJ4sEaNGrnujOqmqNY0OXz4sPmJsAUAAAAg2y6++GIXWtSCpdanUKeccoolJia67oUeTacCGfXr13fXFYIUkHR7WjSmSy1TKnShLotPP/10qmlU+ELjwVSAQ+PGpk2b5m5XuFI4U/fD5s2buy6Kv/32m50IhC0AAAAA2VawYEHXJfCHH35w/w9VokQJ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kiVLWrNmzaxBgwbZClpffPGFde7c2Y3zUoD78MMPw+6//vrr3e2hl4svvjhsmp07d1qPHj2sdOnSVqZMGevTp4/99ddfYdN8//33dsEFF7jWN403GzduXDZfMQAAAAD42LIlX3/9tU2dOtU2bdoU7Ero+eCDDzI1j3379lnjxo2td+/e1rVr16jTKFxNnDgxeD0y1CloqQLinDlz3BiyG264wW666SabPHmyu3/Pnj3Wvn17a9eunStLv3LlSvd8CmaaDgAAAAByTdh65513rGfPntahQwebPXu2CzM//fSTbdu2zS6//PJMz+eSSy5xl/QoXFWpUiXqferCOHPmTFu2bJmdffbZ7rZnn33WOnbsaI899phrMXvrrbdcGNQJlxMTE925wFasWGFPPPEEYQsAAABA7upG+NBDD9mTTz5pn3zyiQswTz/9tK1Zs8auvPJKq1GjRo4u4Pz5861SpUp22mmn2a233uoKc3gWL17sWqi8oCVqwSpQoIB99dVXwWlatWrlltOjkLh27Vr7888/oz7noUOHXItY6AUAAAAAfA9b69evt06dOrn/K8SoO6DGUw0cONBeeuklyynqQvj666+7svIqyLFgwQLXEnbs2LHgyZUVxEIVKlTIypUr5+7zpqlcuXLYNN51b5pIY8eOtaSkpOBF47wAAAAAwPduhGXLlrW9e/e6/5900km2atUqa9iwoe3atcv2799vOeXqq68O/l/zb9SokZ1yyimutatt27bmF5WvHzRoUPC6WrYIXAAAAAB8b9lStzwVpJB//OMfduedd7oTHXfv3t3XEHTyySdbhQoVbN26de66xnJt3749bJqjR4+6CoXeOC/91ViyUN71tMaCaZyYqhuGXgAAAADA95at5557zg4ePOj+f88991jhwoVt0aJF1q1bNxsxYoT55ddff3VjtpKTk931Fi1auNa05cuXW9OmTd1t8+bNs5SUFDv33HOD02gZValQyykKihoDphY6AAAAAPBDQiAQCGR24swWishsS5DOh+W1Up155pmuQmDr1q3dmCtdxowZ4wKcWqA0Tmzo0KGu+6LKt3sl4DWGSy1VKuvulX5XwQyv9Pvu3btdsFLFxGHDhrkujyr9rgIfma1GqNetsVuaV25p5ap194xsPW7jw/93rB0AAACArMtKNshSy5Yq/6kQRka8AhaZOVeXwpXH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No9Dhw7ZsGHDXAufWvrq1KkTfJ2yYMECO+ecc9x9ycnJdvfdd9vRo0eD93vrQpdixYpZkyZN3GsBAMQGYQsAcMLt3LnThQC1YJUoUSLV/V5IufHGG910W7ZsCd43ffp0279/v1111VXB20466SR76aWXgtcV4Hbs2JHmc3thTl588UX3+FD79u1zoe/rr792XRoLFChgl19+uaWkpGT7Nf/111/WsWNHN79vv/3WLr74YtdlctOmTcFpevbsaW+//bY988wz9uOPP7plUzCT//3vf+7xCmnfffedjR8/3gWxBx54IOx5+vbt69bXqlWrrEGDBtarV69sLzMA4PgQtgAAJ9y6dessEAhYvXr10p3uvPPOs9NOO83eeOON4G0TJ060f/zjH8EQIn//+99dgPnll1/cdQUvtYpFo9v/9a9/uf8r6Cxfvtw9PpRa2rp27epaltQ69Oqrr9rKlSvthx9+SHNZixYtagcOHEjz/saNG9vNN9/sAlDdunXt/vvvt1NOOcU+/vhjd/9PP/1kU6dOdc+lYKdxbG3btg2GyhdeeMG1eD333HNuvXXp0sXGjBljjz/+eFgILF68uFWpUsVq1qzpWgCTkpLSXccAAP8QtgAAJ5yCVmapdUsBS7Zt22affvppqiCVmJho1113nb388su2Z88emzZtmmslikYtPerup+k0/bXXXuseH+rnn3+27t27u8BTunRpq1Wrlrs9tBUqkkLUe++957o5ptWyddddd9npp5/uWu4UFtV65c1zxYoVVrBgQbvwwgujPl7TtmjRwnUR9GjMm+b766+/Bm9TKNO81Y1QIfW1115Lc5kBAP6iQAYA4IRTy45CQ2aKYCg0aWzS4sWLbdGiRVa7dm274IILUk130003WZs2bdyYqPbt21uFChWizk9jsDp06GCvv/66a0XSuKkJEyaETaPufWoZUgtY1apVXcuRwtThw4fTXM6nnnrKtTapW6TCm8ZSqbXLo6A1Z84ce+yxx1yLmcLQFVdcEZynrueEHj162D333GMHDx50QUutgGqRU2gEAJxYtGwBAE64cuXKucDz/PPPu/FRkXbt2hUWjhRi1LqlohM33HBD1HmqwIZC3D//+U83bik96s6n6dRyFdmV8Y8//rC1a9faiBEjXDc+tUT9+eefGb4mtTKplL0eq1aq++67L+z+hQsX2vXXX++6CKryorr6qSKjR7cp1KkIRjRaDgXO0FZBzbNUqVJWrVq14G3qNqgwp3A4atQoN9ZLY9gAACceLVsAgJhQ0FJAUXU9BRNVCVRrkFp/VPxB3eZCuxKqIuCxY8fSLfjwyCOP2JdffmmtW7e23bt3pzmduuppvJO65UUqW7asC3ga96WKf+rmp5a1zFA3QLW8icZLhVIQVMVEtZqpVe/ee+8NG2ulrop6beoiqQIZGuOlMWjbt2+3K6+80lVvVOuZzkvWv39/F+oUplTIQwU8PCoeotCnyoZq2SpUqJALXwCAE4+wBQCICbUqffPNN/bggw/a4MGDXQW9ihUrWtOmTV3YCtWuXTsXfFQaXt360qLgpktmDBw4MOrtCi7vvPOO3XHHHa51SAU6FH5CS8NnxxNPPOGClIp+qIujSrxr3FgovW61uClYqYWtRo0a7rqoYuK///1vGzJkiAtiah3s06ePa4ELpa6PuqgrowLeW2+9FRxzBgA4sRICWRmlDABADKgIhMKGuhKqSiAAAHkBLVsAgFxL3ex+//13V95cFfwiS7QDAJCbEbYAALmWxktpDJQKQKg4hsYfAQCQV9CNEAAAAAB8QOl3AAAAAPABYQsAAAAAfEDYAgAAAAAfELYAAAAAwAeELQAAAADwAWELAAAAAHxA2AIAAAAAHxC2AAAAAMBy3v8BtN0VhftnSxAAAAAASUVORK5CYII=",
+      "text/plain": [
+       "<Figure size 1000x500 with 1 Axes>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "# Строим гистрограмму\n",
+    "plt.figure(figsize=(10,5))\n",
+    "\n",
+    "plt.hist(msc, bins=50, label='Москва')\n",
+    "plt.hist(spb, bins=50, label='СПБ')\n",
+    "\n",
+    "plt.title('Сравнение распределения данных в двух выборках')\n",
+    "plt.xlabel('Сумма часов')\n",
+    "plt.ylabel('Частота')\n",
+    "\n",
+    "plt.legend()\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "3662f92a",
+   "metadata": {},
+   "source": [
+    "Графики показывают сильное смещение значений вправо, что говорит о ненормальном распределении данных в столбце `hours`. При этом характер распределения у двух выборок одинаковый."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "755b2d24",
+   "metadata": {},
+   "source": [
+    "Проверим, как распределены данные датафрейма между двумя группами пользователей: жителями Москвы и Санкт-Петербурга."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "id": "7de1e080",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "city\n",
+      "Москва             5692\n",
+      "Санкт-Петербург    2189\n",
+      "Name: puid, dtype: int64\n"
+     ]
+    }
+   ],
+   "source": [
+    "users_city = df.groupby('city')['puid'].count()\n",
+    "print(users_city)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "5da5a3d5",
+   "metadata": {},
+   "source": [
+    "Пользователи поделены между группами неравномерно, количество жителей Москвы намного больше, чем жителей Санкт-Петербурга."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "956e82e2",
+   "metadata": {
+    "id": "956e82e2"
+   },
+   "source": [
+    "## 2. Проверка гипотезы в Python\n",
+    "\n",
+    "Гипотеза звучит так: пользователи из Санкт-Петербурга проводят в среднем больше времени за чтением и прослушиванием книг в приложении, чем пользователи из Москвы. Попробуйте статистически это доказать, используя одностороннюю проверку гипотезы с двумя выборками:\n",
+    "\n",
+    "- Нулевая гипотеза H₀: Средняя активность пользователей в часах в двух группах (Москва и Санкт-Петербург) не различается.\n",
+    "\n",
+    "- Альтернативная гипотеза H₁: Средняя активность пользователей в Санкт-Петербурге больше, и это различие статистически значимо."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "0be18823",
+   "metadata": {},
+   "source": [
+    "Чтобы сравнить группы пользователей, воспользуемся непараметрическим **тестом Манна-Уитни**, который устойчив к выбросам в данных и не требует одинакого размера выборок. С помощью этого теста мы проверим, является ли распределение между выборками одинаковым, несмотря на разницу в количестве пользователей. Если предположение подтвердится, то перейдем к **t-тесту**."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "85a9f6bc",
+   "metadata": {},
+   "source": [
+    "Для всех тестов укажем уровень значимости альфа = 0.05. \n",
+    "\n",
+    "Параметр alternative указываем 'two-sided', т.к предполагается, что распределение метрик может отличаться в обе стороны между группами. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "id": "d96ff173",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Распределение метрики в группах msc и spb равны.\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Задаем уровень значимости\n",
+    "alpha = 0.05\n",
+    "\n",
+    "# Произведем тест Манна-Уитни\n",
+    "mw_test = mannwhitneyu(\n",
+    "    msc,\n",
+    "    spb,\n",
+    "    alternative='two-sided'\n",
+    ")\n",
+    "\n",
+    "if mw_test.pvalue > alpha:\n",
+    "    print('Распределение метрики в группах msc и spb равны.')\n",
+    "else:\n",
+    "    print('Распределение метрики в группах msc и spb различаются')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "bde82fb9",
+   "metadata": {},
+   "source": [
+    "Можно утверждать, что распределение метрик между группами не различается, поэтому можно перейти к Т-тесту. Т.к распределение данных не является нормальным, нельзя говорить о равенстве дисперсий в группах, поэтому воспользуемся Т-тестом Уэлча, которому не нужно равенство дисперсий двух выборок."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "id": "5293c9f5",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Значение pvalue: 0.09\n",
+      "Средняя активность пользователей в часах в двух группах (Москва и Санкт-Петербург) не различается.\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Произведем Т-тест Уэлча\n",
+    "stat_welsh_ttest, pvalue = ttest_ind(\n",
+    "    msc,\n",
+    "    spb,\n",
+    "    equal_var=False, # Параметр неравенства дисперсий\n",
+    "    alternative='less'\n",
+    ")\n",
+    "\n",
+    "print('Значение pvalue:', round(pvalue,2))\n",
+    "\n",
+    "if pvalue > alpha:\n",
+    "    print('Средняя активность пользователей в часах в двух группах (Москва и Санкт-Петербург) не различается.')\n",
+    "else:\n",
+    "    print('Средняя активность пользователей в Санкт-Петербурге больше, и это различие статистически значимо.')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "6953e84c",
+   "metadata": {
+    "id": "6953e84c"
+   },
+   "source": [
+    "## 3. Аналитическая записка\n",
+    "По результатам анализа данных подготовьте аналитическую записку, в которой опишете:\n",
+    "\n",
+    "- Выбранный тип t-теста и уровень статистической значимости.\n",
+    "\n",
+    "- Результат теста, или p-value.\n",
+    "\n",
+    "- Вывод на основе полученного p-value, то есть интерпретацию результатов.\n",
+    "\n",
+    "- Одну или две возможные причины, объясняющие полученные результаты.\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "2a63baa5",
+   "metadata": {},
+   "source": [
+    "Для сравнения двух выборок был выбран t-тест Уэлча, уровень статистической значимости alpha = 0.05. Был выбран именно этот тест, т.к нельзя утверждать, что дисперсии между двумя группами равны, t-тест Уэлча не чувствителен к этому. \n",
+    "\n",
+    "Результат теста - Нулевая гипотеза находит подтверждение, значение pvalue = 0.09.\n",
+    "\n",
+    "Т.к значение pvalue = 0.09 > alpha = 0.05, можно утверждать, что средняя активность пользователей в часах в двух группах (Москва и Санкт-Петербург) не различается.\n",
+    "\n",
+    "Возможные причины полученного результата:\n",
+    "- Выборка пользователей из Санкт-Петербурга оказалась сильно меньше выборки пользователей из Москвы, что могло исказить результаты.\n",
+    "- Т.к выборка пользователей из Моксвы сильно больше, при расчете среднего значения часов прослушиваний для Москвы оно оказалось меньше, чем в Санкт-Петербурге. Из-за этого могло показаться, что пользователи в Санкт-Петербурге пользуются сервисом более активно, чем в Москве."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "hc1d6jVISegz",
+   "metadata": {
+    "id": "hc1d6jVISegz"
+   },
+   "source": [
+    "----"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "NqOUIYhbrIfC",
+   "metadata": {
+    "id": "NqOUIYhbrIfC"
+   },
+   "source": [
+    "# Часть 2. Анализ результатов A/B-тестирования"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "tDwMKFNGsClr",
+   "metadata": {
+    "id": "tDwMKFNGsClr"
+   },
+   "source": [
+    "Теперь вам нужно проанализировать другие данные. Представьте, что к вам обратились представители интернет-магазина BitMotion Kit, в котором продаются геймифицированные товары для тех, кто ведёт здоровый образ жизни. У него есть своя целевая аудитория, даже появились хиты продаж: эспандер со счётчиком и напоминанием, так и подстольный велотренажёр с Bluetooth.\n",
+    "\n",
+    "В будущем компания хочет расширить ассортимент товаров. Но перед этим нужно решить одну проблему. Интерфейс онлайн-магазина слишком сложен для пользователей — об этом говорят отзывы.\n",
+    "\n",
+    "Чтобы привлечь новых клиентов и увеличить число продаж, владельцы магазина разработали новую версию сайта и протестировали его на части пользователей. По задумке, это решение доказуемо повысит количество пользователей, которые совершат покупку.\n",
+    "\n",
+    "Ваша задача — провести оценку результатов A/B-теста. В вашем распоряжении:\n",
+    "\n",
+    "* данные о действиях пользователей и распределении их на группы,\n",
+    "\n",
+    "* техническое задание.\n",
+    "\n",
+    "Оцените корректность проведения теста и проанализируйте его результаты."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "UNXAAyF5r9Rk",
+   "metadata": {
+    "id": "UNXAAyF5r9Rk"
+   },
+   "source": [
+    "## 1. Опишите цели исследования.\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "kHx-51yES8bd",
+   "metadata": {
+    "id": "kHx-51yES8bd"
+   },
+   "source": [
+    "Основная цель - оценить конверсию пользователей тестовой группы из посетителей интернет-магазина в покупателей на основе данных их активности.\n",
+    "\n",
+    "Задачи:\n",
+    "- загрузить данные и оценить их целостность\n",
+    "- оценить корректность проведения теста\n",
+    "- провести оценку результатов теста"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "_CZryx2OsH-s",
+   "metadata": {
+    "id": "_CZryx2OsH-s"
+   },
+   "source": [
+    "## 2. Загрузите данные, оцените их целостность.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "id": "DjFcJbeGsTIg",
+   "metadata": {
+    "id": "DjFcJbeGsTIg"
+   },
+   "outputs": [],
+   "source": [
+    "participants = pd.read_csv('https://code.s3.yandex.net/datasets/ab_test_participants.csv')\n",
+    "events = pd.read_csv('https://code.s3.yandex.net/datasets/ab_test_events.zip',\n",
+    "                     parse_dates=['event_dt'], low_memory=False)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "f6a1ba17",
+   "metadata": {},
+   "source": [
+    "Выведем основную информацию о датафреймах `participants` и `events`:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "id": "3978d501",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "<class 'pandas.core.frame.DataFrame'>\n",
+      "RangeIndex: 14525 entries, 0 to 14524\n",
+      "Data columns (total 4 columns):\n",
+      " #   Column   Non-Null Count  Dtype \n",
+      "---  ------   --------------  ----- \n",
+      " 0   user_id  14525 non-null  object\n",
+      " 1   group    14525 non-null  object\n",
+      " 2   ab_test  14525 non-null  object\n",
+      " 3   device   14525 non-null  object\n",
+      "dtypes: object(4)\n",
+      "memory usage: 454.0+ KB\n"
+     ]
+    }
+   ],
+   "source": [
+    "participants.info()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "id": "5f5e9a1d",
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "<class 'pandas.core.frame.DataFrame'>\n",
+      "RangeIndex: 787286 entries, 0 to 787285\n",
+      "Data columns (total 4 columns):\n",
+      " #   Column      Non-Null Count   Dtype         \n",
+      "---  ------      --------------   -----         \n",
+      " 0   user_id     787286 non-null  object        \n",
+      " 1   event_dt    787286 non-null  datetime64[ns]\n",
+      " 2   event_name  787286 non-null  object        \n",
+      " 3   details     249022 non-null  object        \n",
+      "dtypes: datetime64[ns](1), object(3)\n",
+      "memory usage: 24.0+ MB\n"
+     ]
+    }
+   ],
+   "source": [
+    "events.info()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "34b866d1",
+   "metadata": {},
+   "source": [
+    "Теперь посмотрим на структуру датафреймов:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "id": "a675dbbc",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>user_id</th>\n",
+       "      <th>group</th>\n",
+       "      <th>ab_test</th>\n",
+       "      <th>device</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>0002CE61FF2C4011</td>\n",
+       "      <td>B</td>\n",
+       "      <td>interface_eu_test</td>\n",
+       "      <td>Mac</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>001064FEAAB631A1</td>\n",
+       "      <td>B</td>\n",
+       "      <td>recommender_system_test</td>\n",
+       "      <td>Android</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>001064FEAAB631A1</td>\n",
+       "      <td>A</td>\n",
+       "      <td>interface_eu_test</td>\n",
+       "      <td>Android</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>0010A1C096941592</td>\n",
+       "      <td>A</td>\n",
+       "      <td>recommender_system_test</td>\n",
+       "      <td>Android</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>001E72F50D1C48FA</td>\n",
+       "      <td>A</td>\n",
+       "      <td>interface_eu_test</td>\n",
+       "      <td>Mac</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>...</th>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>14520</th>\n",
+       "      <td>FFE7FC140521F5F6</td>\n",
+       "      <td>A</td>\n",
+       "      <td>interface_eu_test</td>\n",
+       "      <td>PC</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>14521</th>\n",
+       "      <td>FFEFC0E55C1CCD4F</td>\n",
+       "      <td>A</td>\n",
+       "      <td>interface_eu_test</td>\n",
+       "      <td>PC</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>14522</th>\n",
+       "      <td>FFF28D02B1EACBE1</td>\n",
+       "      <td>B</td>\n",
+       "      <td>recommender_system_test</td>\n",
+       "      <td>PC</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>14523</th>\n",
+       "      <td>FFF28D02B1EACBE1</td>\n",
+       "      <td>B</td>\n",
+       "      <td>interface_eu_test</td>\n",
+       "      <td>PC</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>14524</th>\n",
+       "      <td>FFF58BC33966EB51</td>\n",
+       "      <td>A</td>\n",
+       "      <td>interface_eu_test</td>\n",
+       "      <td>Android</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>14525 rows × 4 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                user_id group                  ab_test   device\n",
+       "0      0002CE61FF2C4011     B        interface_eu_test      Mac\n",
+       "1      001064FEAAB631A1     B  recommender_system_test  Android\n",
+       "2      001064FEAAB631A1     A        interface_eu_test  Android\n",
+       "3      0010A1C096941592     A  recommender_system_test  Android\n",
+       "4      001E72F50D1C48FA     A        interface_eu_test      Mac\n",
+       "...                 ...   ...                      ...      ...\n",
+       "14520  FFE7FC140521F5F6     A        interface_eu_test       PC\n",
+       "14521  FFEFC0E55C1CCD4F     A        interface_eu_test       PC\n",
+       "14522  FFF28D02B1EACBE1     B  recommender_system_test       PC\n",
+       "14523  FFF28D02B1EACBE1     B        interface_eu_test       PC\n",
+       "14524  FFF58BC33966EB51     A        interface_eu_test  Android\n",
+       "\n",
+       "[14525 rows x 4 columns]"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "display(participants)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "id": "f71685ff",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>user_id</th>\n",
+       "      <th>event_dt</th>\n",
+       "      <th>event_name</th>\n",
+       "      <th>details</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>GLOBAL</td>\n",
+       "      <td>2020-12-01 00:00:00</td>\n",
+       "      <td>End of Black Friday Ads Campaign</td>\n",
+       "      <td>ZONE_CODE15</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>CCBE9E7E99F94A08</td>\n",
+       "      <td>2020-12-01 00:00:11</td>\n",
+       "      <td>registration</td>\n",
+       "      <td>0.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>GLOBAL</td>\n",
+       "      <td>2020-12-01 00:00:25</td>\n",
+       "      <td>product_page</td>\n",
+       "      <td>NaN</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>CCBE9E7E99F94A08</td>\n",
+       "      <td>2020-12-01 00:00:33</td>\n",
+       "      <td>login</td>\n",
+       "      <td>NaN</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>CCBE9E7E99F94A08</td>\n",
+       "      <td>2020-12-01 00:00:52</td>\n",
+       "      <td>product_page</td>\n",
+       "      <td>NaN</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>...</th>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>787281</th>\n",
+       "      <td>1A655C280B064708</td>\n",
+       "      <td>2020-12-31 23:57:44</td>\n",
+       "      <td>product_page</td>\n",
+       "      <td>NaN</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>787282</th>\n",
+       "      <td>B77B2F4BCA134618</td>\n",
+       "      <td>2020-12-31 23:58:23</td>\n",
+       "      <td>registration</td>\n",
+       "      <td>0.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>787283</th>\n",
+       "      <td>GLOBAL</td>\n",
+       "      <td>2020-12-31 23:58:30</td>\n",
+       "      <td>product_cart</td>\n",
+       "      <td>NaN</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>787284</th>\n",
+       "      <td>B12AD1623E494FAD</td>\n",
+       "      <td>2020-12-31 23:58:34</td>\n",
+       "      <td>registration</td>\n",
+       "      <td>-6.52</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>787285</th>\n",
+       "      <td>5456977474344433</td>\n",
+       "      <td>2020-12-31 23:59:48</td>\n",
+       "      <td>registration</td>\n",
+       "      <td>-3.67</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>787286 rows × 4 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                 user_id            event_dt  \\\n",
+       "0                 GLOBAL 2020-12-01 00:00:00   \n",
+       "1       CCBE9E7E99F94A08 2020-12-01 00:00:11   \n",
+       "2                 GLOBAL 2020-12-01 00:00:25   \n",
+       "3       CCBE9E7E99F94A08 2020-12-01 00:00:33   \n",
+       "4       CCBE9E7E99F94A08 2020-12-01 00:00:52   \n",
+       "...                  ...                 ...   \n",
+       "787281  1A655C280B064708 2020-12-31 23:57:44   \n",
+       "787282  B77B2F4BCA134618 2020-12-31 23:58:23   \n",
+       "787283            GLOBAL 2020-12-31 23:58:30   \n",
+       "787284  B12AD1623E494FAD 2020-12-31 23:58:34   \n",
+       "787285  5456977474344433 2020-12-31 23:59:48   \n",
+       "\n",
+       "                              event_name      details  \n",
+       "0       End of Black Friday Ads Campaign  ZONE_CODE15  \n",
+       "1                           registration          0.0  \n",
+       "2                           product_page          NaN  \n",
+       "3                                  login          NaN  \n",
+       "4                           product_page          NaN  \n",
+       "...                                  ...          ...  \n",
+       "787281                      product_page          NaN  \n",
+       "787282                      registration          0.0  \n",
+       "787283                      product_cart          NaN  \n",
+       "787284                      registration        -6.52  \n",
+       "787285                      registration        -3.67  \n",
+       "\n",
+       "[787286 rows x 4 columns]"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "display(events)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "a474bbfa",
+   "metadata": {},
+   "source": [
+    "В датафрейме `participants` 14525 строк и 4 столбца, пропусков нет, тип данных для всех колонок корректен.\n",
+    "\n",
+    "В датафрейме `events` 787286 строк и 4 столбца, пропуски замечены только в столбце `details`, которые не особо важны для анализа, тип данных также корректен для всех столбцов."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "CnzA-efasUrk",
+   "metadata": {
+    "id": "CnzA-efasUrk"
+   },
+   "source": [
+    "## 3. По таблице `ab_test_participants` оцените корректность проведения теста:\n",
+    "\n",
+    "   3\\.1 Выделите пользователей, участвующих в тесте, и проверьте:\n",
+    "\n",
+    "   - соответствие требованиям технического задания,\n",
+    "\n",
+    "   - равномерность распределения пользователей по группам теста,\n",
+    "\n",
+    "   - отсутствие пересечений с конкурирующим тестом (нет пользователей, участвующих одновременно в двух тестовых группах)."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "26e5a888",
+   "metadata": {},
+   "source": [
+    "Выделим группы А и В из таблицы `participants`:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "id": "4136849e",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Выделяем группы А и В \n",
+    "group_A = participants[(participants['group'] == 'A')]\n",
+    "group_B = participants[(participants['group'] == 'B')]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "fdb0d313",
+   "metadata": {},
+   "source": [
+    "Сравним группы А и В по количеству пользователей:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "id": "c0cda210",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Количество пользователей в группе А: 7805\n",
+      "Количество пользователей в группе B: 6279\n",
+      "Разница между группами: 1526 или 20.0%\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Посчитаем количество уникальных пользователей в каждой группе\n",
+    "users_count_A = group_A['user_id'].nunique()\n",
+    "users_count_B = group_B['user_id'].nunique()\n",
+    "\n",
+    "diff = round(users_count_A - users_count_B,2)\n",
+    "diff_percent = round((users_count_A - users_count_B)/users_count_A,2) * 100\n",
+    "\n",
+    "# Выведем результат\n",
+    "print('Количество пользователей в группе А:', users_count_A)\n",
+    "print('Количество пользователей в группе B:', users_count_B)\n",
+    "\n",
+    "print(f'Разница между группами: {diff} или {diff_percent}%')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "7274cf76",
+   "metadata": {},
+   "source": [
+    "В группе А наблюдается на 1526 пользователей больше (20%), чем в группе В. Данное различие не сильно скажется на расчете статистического теста, т.к главное его условие - для работы ЦПТ необходимо большое количество наблюдений в каждой выборке (более 50 в каждой)."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "GjulgSrlsqUU",
+   "metadata": {
+    "id": "GjulgSrlsqUU"
+   },
+   "source": [
+    "3\\.2 Проанализируйте данные о пользовательской активности по таблице `ab_test_events`:\n",
+    "\n",
+    "- оставьте только события, связанные с участвующими в изучаемом тесте пользователями;"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "f97f460b",
+   "metadata": {},
+   "source": [
+    "Выведем уникальные значения столбца `ab_test`:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 24,
+   "id": "11e51f2c",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "['interface_eu_test' 'recommender_system_test']\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(participants['ab_test'].unique())"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "f55d4248",
+   "metadata": {},
+   "source": [
+    "В таблице содержится информация о двух тестах `interface_eu_test` и `recommender_system_test`. Чтобы корретно оценить A/B тест интерфейса сайта, выделим группы пользователей, которые учавствовали только в тестировании нового интерфейса.\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 25,
+   "id": "QMt0Ybo_swDK",
+   "metadata": {
+    "id": "QMt0Ybo_swDK"
+   },
+   "outputs": [],
+   "source": [
+    "group_A = group_A[group_A['ab_test'] == 'interface_eu_test']\n",
+    "group_B = group_B[group_B['ab_test'] == 'interface_eu_test']"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "bacb585e",
+   "metadata": {},
+   "source": [
+    "Проверим, нет ли в обеих группах одних и тех же пользователей:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 26,
+   "id": "32f5e02d",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[]\n"
+     ]
+    }
+   ],
+   "source": [
+    "intersection = list(set(group_A['user_id']) & set(group_B['user_id']))\n",
+    "\n",
+    "print(intersection)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "a7d42bbd",
+   "metadata": {},
+   "source": [
+    "Пересечений по `user_id` нет. Теперь проверим группы на наличие явных и неявных дубликатов:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 27,
+   "id": "04606541",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Кол-во явных дубликатов в группе А: 0\n",
+      "Кол-во явных дубликатов в группе В: 0\n",
+      "---\n",
+      "Кол-во неявных дубликатов в группе А: 0\n",
+      "Кол-во неявных дубликатов в группе B: 0\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Провереряем наличие явных дубликатов\n",
+    "print('Кол-во явных дубликатов в группе А:', group_A.duplicated().sum())\n",
+    "print('Кол-во явных дубликатов в группе В:', group_B.duplicated().sum())\n",
+    "\n",
+    "print('---')\n",
+    "\n",
+    "# Проверяем наличие неявных дубликатов по столбцу user_id\n",
+    "print('Кол-во неявных дубликатов в группе А:', group_A['user_id'].duplicated().sum())\n",
+    "print('Кол-во неявных дубликатов в группе B:', group_A['user_id'].duplicated().sum())"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "4c5d19d3",
+   "metadata": {},
+   "source": [
+    "Явных и неявных дубликатов в группах необнаружено."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "fBZ4DC2xswZJ",
+   "metadata": {
+    "id": "fBZ4DC2xswZJ"
+   },
+   "source": [
+    "- определите горизонт анализа: рассчитайте время (лайфтайм) совершения события пользователем после регистрации и оставьте только те события, которые были выполнены в течение первых семи дней с момента регистрации;"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 28,
+   "id": "sES4-dKts0Yb",
+   "metadata": {
+    "id": "sES4-dKts0Yb"
+   },
+   "outputs": [],
+   "source": [
+    "# Создадим вспомогательную таблицу где будут отобраны все пользователи только с датой регистрации\n",
+    "registation_time = events[events['event_name'] == 'registration'][['user_id', 'event_dt']]\n",
+    "# Переименуем столбец со временем регистрации\n",
+    "registation_time = registation_time.rename(columns={'event_dt' : 'registration_time'})"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 29,
+   "id": "37f30a62",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>user_id</th>\n",
+       "      <th>event_dt</th>\n",
+       "      <th>event_name</th>\n",
+       "      <th>details</th>\n",
+       "      <th>registration_time</th>\n",
+       "      <th>lifetime</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>CCBE9E7E99F94A08</td>\n",
+       "      <td>2020-12-01 00:00:11</td>\n",
+       "      <td>registration</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>2020-12-01 00:00:11</td>\n",
+       "      <td>0 days 00:00:00</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>CCBE9E7E99F94A08</td>\n",
+       "      <td>2020-12-01 00:00:33</td>\n",
+       "      <td>login</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>2020-12-01 00:00:11</td>\n",
+       "      <td>0 days 00:00:22</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>CCBE9E7E99F94A08</td>\n",
+       "      <td>2020-12-01 00:00:52</td>\n",
+       "      <td>product_page</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>2020-12-01 00:00:11</td>\n",
+       "      <td>0 days 00:00:41</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>5</th>\n",
+       "      <td>AA346F4D22148024</td>\n",
+       "      <td>2020-12-01 00:01:46</td>\n",
+       "      <td>registration</td>\n",
+       "      <td>-2.0</td>\n",
+       "      <td>2020-12-01 00:01:46</td>\n",
+       "      <td>0 days 00:00:00</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>6</th>\n",
+       "      <td>7EF01D0E72AF449D</td>\n",
+       "      <td>2020-12-01 00:02:06</td>\n",
+       "      <td>registration</td>\n",
+       "      <td>-5.0</td>\n",
+       "      <td>2020-12-01 00:02:06</td>\n",
+       "      <td>0 days 00:00:00</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>...</th>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>787280</th>\n",
+       "      <td>10CAFD77114A4537</td>\n",
+       "      <td>2020-12-31 23:57:35</td>\n",
+       "      <td>product_page</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>2020-12-31 23:56:56</td>\n",
+       "      <td>0 days 00:00:39</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>787281</th>\n",
+       "      <td>1A655C280B064708</td>\n",
+       "      <td>2020-12-31 23:57:44</td>\n",
+       "      <td>product_page</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>2020-12-31 23:55:07</td>\n",
+       "      <td>0 days 00:02:37</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>787282</th>\n",
+       "      <td>B77B2F4BCA134618</td>\n",
+       "      <td>2020-12-31 23:58:23</td>\n",
+       "      <td>registration</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>2020-12-31 23:58:23</td>\n",
+       "      <td>0 days 00:00:00</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>787284</th>\n",
+       "      <td>B12AD1623E494FAD</td>\n",
+       "      <td>2020-12-31 23:58:34</td>\n",
+       "      <td>registration</td>\n",
+       "      <td>-6.52</td>\n",
+       "      <td>2020-12-31 23:58:34</td>\n",
+       "      <td>0 days 00:00:00</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>787285</th>\n",
+       "      <td>5456977474344433</td>\n",
+       "      <td>2020-12-31 23:59:48</td>\n",
+       "      <td>registration</td>\n",
+       "      <td>-3.67</td>\n",
+       "      <td>2020-12-31 23:59:48</td>\n",
+       "      <td>0 days 00:00:00</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>668111 rows × 6 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                 user_id            event_dt    event_name details  \\\n",
+       "1       CCBE9E7E99F94A08 2020-12-01 00:00:11  registration     0.0   \n",
+       "3       CCBE9E7E99F94A08 2020-12-01 00:00:33         login     NaN   \n",
+       "4       CCBE9E7E99F94A08 2020-12-01 00:00:52  product_page     NaN   \n",
+       "5       AA346F4D22148024 2020-12-01 00:01:46  registration    -2.0   \n",
+       "6       7EF01D0E72AF449D 2020-12-01 00:02:06  registration    -5.0   \n",
+       "...                  ...                 ...           ...     ...   \n",
+       "787280  10CAFD77114A4537 2020-12-31 23:57:35  product_page     NaN   \n",
+       "787281  1A655C280B064708 2020-12-31 23:57:44  product_page     NaN   \n",
+       "787282  B77B2F4BCA134618 2020-12-31 23:58:23  registration     0.0   \n",
+       "787284  B12AD1623E494FAD 2020-12-31 23:58:34  registration   -6.52   \n",
+       "787285  5456977474344433 2020-12-31 23:59:48  registration   -3.67   \n",
+       "\n",
+       "         registration_time        lifetime  \n",
+       "1      2020-12-01 00:00:11 0 days 00:00:00  \n",
+       "3      2020-12-01 00:00:11 0 days 00:00:22  \n",
+       "4      2020-12-01 00:00:11 0 days 00:00:41  \n",
+       "5      2020-12-01 00:01:46 0 days 00:00:00  \n",
+       "6      2020-12-01 00:02:06 0 days 00:00:00  \n",
+       "...                    ...             ...  \n",
+       "787280 2020-12-31 23:56:56 0 days 00:00:39  \n",
+       "787281 2020-12-31 23:55:07 0 days 00:02:37  \n",
+       "787282 2020-12-31 23:58:23 0 days 00:00:00  \n",
+       "787284 2020-12-31 23:58:34 0 days 00:00:00  \n",
+       "787285 2020-12-31 23:59:48 0 days 00:00:00  \n",
+       "\n",
+       "[668111 rows x 6 columns]"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "# Соединим вспомогательную таблицу с основной по столбцу user_id\n",
+    "events = events.merge(registation_time, how='left', on='user_id')\n",
+    "# Посчитаем разницу между датой регистрации и любым другим событием пользователя\n",
+    "events['lifetime'] = (events['event_dt'] - events['registration_time'])\n",
+    "# Отфильтруем таблицу events по дням\n",
+    "events = events[events['lifetime'].dt.days < 7]\n",
+    "\n",
+    "# Прроверим результат\n",
+    "display(events)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "7cf1df48",
+   "metadata": {},
+   "source": [
+    "Оцените достаточность выборки для получения статистически значимых результатов A/B-теста. Заданные параметры:\n",
+    "\n",
+    "- базовый показатель конверсии — 30%,\n",
+    "\n",
+    "- мощность теста — 80%,\n",
+    "\n",
+    "- достоверность теста — 95%."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "e537a988",
+   "metadata": {},
+   "source": [
+    "Для расчета достаточности выборки воспользуемся калькулятором Эвана-Миллера. С указанными параметрами и минимальным детектируемым эффектом - 5% в каждой выборке должно быть не менее 1335 пользователей."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "SadyUDgZs0t3",
+   "metadata": {
+    "id": "SadyUDgZs0t3"
+   },
+   "source": [
+    "- рассчитайте для каждой группы количество посетителей, сделавших покупку, и общее количество посетителей."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "b8bca2db",
+   "metadata": {},
+   "source": [
+    "Присоединим к таблицам `group_A` и `group_B` таблицу `events`:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 30,
+   "id": "3b308075",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "group_A = group_A.merge(events, how='left', on='user_id')\n",
+    "group_B = group_B.merge(events, how='left', on='user_id')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 31,
+   "id": "9f167150",
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Контрольная группа А\n",
+      "Общее число пользователей: 33762, число покупателей: 2895, конверсия: 9.0%\n",
+      "---\n",
+      "Тестовая группа В\n",
+      "Общее число пользователей: 35187, число покупателей: 3728, конверсия: 11.0%\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Найдем общее кол-во пользователей и кол-во пользователей, совершивших покупку\n",
+    "# для группы А\n",
+    "purchase_users_A = group_A[group_A['event_name'] == 'purchase']['user_id'].count()\n",
+    "all_users_A = group_A['user_id'].count()\n",
+    "# для группы B\n",
+    "purchase_users_B = group_B[group_B['event_name'] == 'purchase']['user_id'].count()\n",
+    "all_users_B = group_B['user_id'].count()\n",
+    "\n",
+    "# Дополнительно расчитаем доли конверсии\n",
+    "conversion_A = round(purchase_users_A / all_users_A,2)\n",
+    "conversion_B = round(purchase_users_B / all_users_B,2)\n",
+    "\n",
+    "# Выведем результат\n",
+    "print('Контрольная группа А')\n",
+    "print(f'Общее число пользователей: {all_users_A}, число покупателей: {purchase_users_A}, конверсия: {conversion_A * 100}%')\n",
+    "print('---')\n",
+    "print('Тестовая группа В')\n",
+    "print(f'Общее число пользователей: {all_users_B}, число покупателей: {purchase_users_B}, конверсия: {conversion_B * 100}%')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "sh1JpGvAs5E3",
+   "metadata": {
+    "id": "sh1JpGvAs5E3"
+   },
+   "source": [
+    "- сделайте предварительный общий вывод об изменении пользовательской активности в тестовой группе по сравнению с контрольной."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "20eb4f53",
+   "metadata": {
+    "id": "hHTHPkJYs8mE"
+   },
+   "source": [
+    "**Предварительный вывод:** В тестовой группе замечено увеличение как общего количества пользователей, так и количества пользователей, совершивших покупку. Конверсия посетителей сайта в покупателей увеличилась на 2% (с 9% до 11%)."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "IKZ1Oo3Ws919",
+   "metadata": {
+    "id": "IKZ1Oo3Ws919"
+   },
+   "source": [
+    "## 4. Проведите оценку результатов A/B-тестирования:"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "dcUdBSmvtC-E",
+   "metadata": {
+    "id": "dcUdBSmvtC-E"
+   },
+   "source": [
+    "- Проверьте изменение конверсии подходящим статистическим тестом, учитывая все этапы проверки гипотез."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "5455db9c",
+   "metadata": {
+    "id": "l_KOziBQtL3t"
+   },
+   "source": [
+    "Для проверки изменения конверсии воспользуемся Z-тестом пропорций. С помощью него сравним доли успешных сессий на сайте (посетитель -> покупатель) между группами А и В.\n",
+    "\n",
+    "Для z-теста необходимо общее количество пользователей, количество пользователей совершивших целевое действие и доли успехов. Все показатели были расчитаны на предыдущем шаге."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 32,
+   "id": "5875d7aa",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Предпосылка о достаточном количестве данных выполняется!\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Проверим достаточно ли данных для проведения z-теста пропорций\n",
+    "if ((conversion_A * all_users_A > 10)\n",
+    "    and((1-conversion_A) * all_users_A > 10)\n",
+    "    and(conversion_B * all_users_B > 10)\n",
+    "    and((1-conversion_B) * all_users_B > 10)):\n",
+    "    print('Предпосылка о достаточном количестве данных выполняется!')\n",
+    "else:\n",
+    "    print('Предпосылка о достаточном количестве данных не выполняется!')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 33,
+   "id": "a0259123",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "pvalue: 1.14229635923504e-19 < 0.05\n",
+      "Нулевая гипотеза не находит подтвеждение! Доля покупателей в группе В увеличилась.\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Проведем z-тест\n",
+    "stat_ztest, pvalue = proportions_ztest(\n",
+    "    [purchase_users_A, purchase_users_B],\n",
+    "    [all_users_A, all_users_B],\n",
+    "    alternative='smaller'\n",
+    ")\n",
+    "\n",
+    "if pvalue > alpha:\n",
+    "    print(f'pvalue: {pvalue} > {alpha}')\n",
+    "    print('Нулевая гипотеза находит подтвеждение! Доля покупателей в группах А и В статистически не различается.')\n",
+    "else:\n",
+    "    print(f'pvalue: {pvalue} < {alpha}')\n",
+    "    print('Нулевая гипотеза не находит подтвеждение! Доля покупателей в группе В увеличилась.')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "9jkyKOjgtGoc",
+   "metadata": {
+    "id": "9jkyKOjgtGoc"
+   },
+   "source": [
+    "- Опишите выводы по проведённой оценке результатов A/B-тестирования. Что можно сказать про результаты A/B-тестирования? Был ли достигнут ожидаемый эффект в изменении конверсии?"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "aabb7f41",
+   "metadata": {},
+   "source": [
+    "Результат теста - Нулевая гипотеза находит не подтверждение, значение pvalue = 1.14229635923504e-19.\n",
+    "\n",
+    "Т.к значение pvalue = 1.14229635923504e-19 < alpha = 0.05, можно утверждать, что доля покупателей в группе В действительно стала больше, чем в группе А - ожидаемый эффект был достигнут. \n",
+    "\n",
+    "Рекомендуется внедрить новый интерфейс для остальных пользователей сайта."
+   ]
+  }
+ ],
+ "metadata": {
+  "ExecuteTimeLog": [
+   {
+    "duration": 470,
+    "start_time": "2025-04-30T09:23:18.703Z"
+   },
+   {
+    "duration": 25,
+    "start_time": "2025-04-30T09:24:07.278Z"
+   },
+   {
+    "duration": 34,
+    "start_time": "2025-04-30T09:24:32.343Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-04-30T09:25:00.716Z"
+   },
+   {
+    "duration": 22,
+    "start_time": "2025-04-30T09:32:00.116Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-04-30T09:32:10.866Z"
+   },
+   {
+    "duration": 1283,
+    "start_time": "2025-04-30T09:33:39.526Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-04-30T09:33:55.763Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-04-30T09:33:58.551Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-04-30T09:34:01.876Z"
+   },
+   {
+    "duration": 2,
+    "start_time": "2025-04-30T10:03:56.488Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-04-30T10:06:52.629Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-04-30T10:07:00.714Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-04-30T10:07:03.978Z"
+   },
+   {
+    "duration": 294,
+    "start_time": "2025-04-30T10:07:19.878Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-04-30T10:07:57.113Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-04-30T10:08:46.188Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-04-30T10:08:50.729Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-04-30T10:10:08.539Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-04-30T10:10:11.226Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-04-30T10:15:25.450Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-04-30T10:15:34.612Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-04-30T10:17:06.623Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-04-30T10:17:49.186Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-04-30T10:17:54.799Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-04-30T10:17:57.726Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-04-30T10:18:01.324Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-04-30T10:21:51.087Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-04-30T10:22:19.498Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-04-30T10:22:22.448Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-04-30T10:26:27.399Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-04-30T10:26:31.748Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-04-30T10:27:05.311Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-04-30T10:28:18.511Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-04-30T10:28:42.561Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-04-30T10:28:48.775Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-04-30T10:36:40.238Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-04-30T10:36:50.651Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-04-30T10:37:09.823Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-04-30T10:37:13.826Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-04-30T10:37:16.026Z"
+   },
+   {
+    "duration": 343,
+    "start_time": "2025-04-30T10:40:27.661Z"
+   },
+   {
+    "duration": 306,
+    "start_time": "2025-04-30T10:40:32.286Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-04-30T10:40:37.673Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-04-30T10:48:13.064Z"
+   },
+   {
+    "duration": 458,
+    "start_time": "2025-04-30T10:49:04.113Z"
+   },
+   {
+    "duration": 25,
+    "start_time": "2025-04-30T10:49:04.573Z"
+   },
+   {
+    "duration": 32,
+    "start_time": "2025-04-30T10:49:04.599Z"
+   },
+   {
+    "duration": 33,
+    "start_time": "2025-04-30T10:49:04.632Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-04-30T10:49:04.668Z"
+   },
+   {
+    "duration": 23,
+    "start_time": "2025-04-30T10:49:04.676Z"
+   },
+   {
+    "duration": 23,
+    "start_time": "2025-04-30T10:49:04.701Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-04-30T10:49:04.726Z"
+   },
+   {
+    "duration": 1436,
+    "start_time": "2025-04-30T10:49:04.735Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-04-30T10:50:55.287Z"
+   },
+   {
+    "duration": 426,
+    "start_time": "2025-04-30T10:52:59.288Z"
+   },
+   {
+    "duration": 76,
+    "start_time": "2025-04-30T10:53:43.937Z"
+   },
+   {
+    "duration": 209,
+    "start_time": "2025-04-30T10:54:21.799Z"
+   },
+   {
+    "duration": 177,
+    "start_time": "2025-04-30T10:54:52.850Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-04-30T10:55:47.726Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-04-30T10:55:56.950Z"
+   },
+   {
+    "duration": 154,
+    "start_time": "2025-04-30T10:57:30.361Z"
+   },
+   {
+    "duration": 217,
+    "start_time": "2025-04-30T10:57:53.761Z"
+   },
+   {
+    "duration": 161,
+    "start_time": "2025-04-30T10:58:13.365Z"
+   },
+   {
+    "duration": 150,
+    "start_time": "2025-04-30T10:58:32.538Z"
+   },
+   {
+    "duration": 102,
+    "start_time": "2025-04-30T10:59:19.610Z"
+   },
+   {
+    "duration": 100,
+    "start_time": "2025-04-30T10:59:36.949Z"
+   },
+   {
+    "duration": 81,
+    "start_time": "2025-04-30T11:00:04.923Z"
+   },
+   {
+    "duration": 114,
+    "start_time": "2025-04-30T11:00:20.561Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-04-30T11:02:29.575Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-04-30T11:03:24.349Z"
+   },
+   {
+    "duration": 876,
+    "start_time": "2025-05-01T04:11:47.571Z"
+   },
+   {
+    "duration": 38,
+    "start_time": "2025-05-01T04:11:48.449Z"
+   },
+   {
+    "duration": 58,
+    "start_time": "2025-05-01T04:11:48.489Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-01T04:11:48.549Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T04:11:48.567Z"
+   },
+   {
+    "duration": 20,
+    "start_time": "2025-05-01T04:11:48.573Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-01T04:11:48.595Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-01T04:11:48.605Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-01T04:11:48.615Z"
+   },
+   {
+    "duration": 141,
+    "start_time": "2025-05-01T04:11:48.627Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T04:11:48.770Z"
+   },
+   {
+    "duration": 1593,
+    "start_time": "2025-05-01T04:11:48.777Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T04:13:13.658Z"
+   },
+   {
+    "duration": 82,
+    "start_time": "2025-05-01T04:13:39.181Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T04:14:04.607Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T04:14:10.655Z"
+   },
+   {
+    "duration": 1183,
+    "start_time": "2025-05-01T04:14:50.895Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-01T04:16:49.044Z"
+   },
+   {
+    "duration": 19,
+    "start_time": "2025-05-01T04:16:56.731Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T04:17:04.981Z"
+   },
+   {
+    "duration": 128,
+    "start_time": "2025-05-01T04:17:25.406Z"
+   },
+   {
+    "duration": 77,
+    "start_time": "2025-05-01T04:17:56.880Z"
+   },
+   {
+    "duration": 126,
+    "start_time": "2025-05-01T04:18:07.017Z"
+   },
+   {
+    "duration": 124,
+    "start_time": "2025-05-01T04:18:10.033Z"
+   },
+   {
+    "duration": 189,
+    "start_time": "2025-05-01T04:18:24.330Z"
+   },
+   {
+    "duration": 133,
+    "start_time": "2025-05-01T04:18:33.542Z"
+   },
+   {
+    "duration": 699,
+    "start_time": "2025-05-01T04:25:42.498Z"
+   },
+   {
+    "duration": 26,
+    "start_time": "2025-05-01T04:25:43.199Z"
+   },
+   {
+    "duration": 44,
+    "start_time": "2025-05-01T04:25:43.227Z"
+   },
+   {
+    "duration": 19,
+    "start_time": "2025-05-01T04:25:43.273Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-01T04:25:43.295Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-01T04:25:43.300Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T04:25:43.311Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T04:25:43.327Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T04:25:43.334Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T04:25:43.346Z"
+   },
+   {
+    "duration": 168,
+    "start_time": "2025-05-01T04:25:43.359Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T04:25:43.529Z"
+   },
+   {
+    "duration": 1707,
+    "start_time": "2025-05-01T04:25:43.536Z"
+   },
+   {
+    "duration": 718,
+    "start_time": "2025-05-01T04:26:05.592Z"
+   },
+   {
+    "duration": 26,
+    "start_time": "2025-05-01T04:26:06.312Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T04:26:06.340Z"
+   },
+   {
+    "duration": 40,
+    "start_time": "2025-05-01T04:26:06.355Z"
+   },
+   {
+    "duration": 30,
+    "start_time": "2025-05-01T04:26:06.398Z"
+   },
+   {
+    "duration": 37,
+    "start_time": "2025-05-01T04:26:06.430Z"
+   },
+   {
+    "duration": 110,
+    "start_time": "2025-05-01T04:26:06.469Z"
+   },
+   {
+    "duration": 30,
+    "start_time": "2025-05-01T04:26:06.581Z"
+   },
+   {
+    "duration": 28,
+    "start_time": "2025-05-01T04:26:06.613Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T04:26:06.643Z"
+   },
+   {
+    "duration": 170,
+    "start_time": "2025-05-01T04:26:06.655Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T04:26:06.827Z"
+   },
+   {
+    "duration": 1765,
+    "start_time": "2025-05-01T04:26:06.834Z"
+   },
+   {
+    "duration": 705,
+    "start_time": "2025-05-01T04:29:56.676Z"
+   },
+   {
+    "duration": 26,
+    "start_time": "2025-05-01T04:29:57.383Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T04:29:57.410Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-01T04:29:57.424Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-01T04:29:57.442Z"
+   },
+   {
+    "duration": 24,
+    "start_time": "2025-05-01T04:29:57.448Z"
+   },
+   {
+    "duration": 24,
+    "start_time": "2025-05-01T04:29:57.473Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-01T04:29:57.499Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-01T04:29:57.509Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-01T04:29:57.520Z"
+   },
+   {
+    "duration": 167,
+    "start_time": "2025-05-01T04:29:57.538Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T04:29:57.707Z"
+   },
+   {
+    "duration": 1534,
+    "start_time": "2025-05-01T04:29:57.715Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T04:31:28.714Z"
+   },
+   {
+    "duration": 650,
+    "start_time": "2025-05-01T04:32:30.244Z"
+   },
+   {
+    "duration": 25,
+    "start_time": "2025-05-01T04:32:30.896Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T04:32:30.923Z"
+   },
+   {
+    "duration": 22,
+    "start_time": "2025-05-01T04:32:30.937Z"
+   },
+   {
+    "duration": 25,
+    "start_time": "2025-05-01T04:32:30.961Z"
+   },
+   {
+    "duration": 22,
+    "start_time": "2025-05-01T04:32:30.988Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-01T04:32:31.011Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-01T04:32:31.028Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-01T04:32:31.044Z"
+   },
+   {
+    "duration": 28,
+    "start_time": "2025-05-01T04:32:31.056Z"
+   },
+   {
+    "duration": 155,
+    "start_time": "2025-05-01T04:32:31.086Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T04:32:31.243Z"
+   },
+   {
+    "duration": 1604,
+    "start_time": "2025-05-01T04:32:31.250Z"
+   },
+   {
+    "duration": 78,
+    "start_time": "2025-05-01T04:34:02.737Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-01T04:34:18.573Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-01T04:34:23.248Z"
+   },
+   {
+    "duration": 141,
+    "start_time": "2025-05-01T04:35:23.288Z"
+   },
+   {
+    "duration": 153,
+    "start_time": "2025-05-01T04:47:27.175Z"
+   },
+   {
+    "duration": 165,
+    "start_time": "2025-05-01T04:47:49.860Z"
+   },
+   {
+    "duration": 698,
+    "start_time": "2025-05-01T04:48:29.484Z"
+   },
+   {
+    "duration": 38,
+    "start_time": "2025-05-01T04:48:30.184Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T04:48:30.223Z"
+   },
+   {
+    "duration": 79,
+    "start_time": "2025-05-01T04:48:30.238Z"
+   },
+   {
+    "duration": 30,
+    "start_time": "2025-05-01T04:48:30.319Z"
+   },
+   {
+    "duration": 58,
+    "start_time": "2025-05-01T04:48:30.351Z"
+   },
+   {
+    "duration": 96,
+    "start_time": "2025-05-01T04:48:30.411Z"
+   },
+   {
+    "duration": 29,
+    "start_time": "2025-05-01T04:48:30.509Z"
+   },
+   {
+    "duration": 43,
+    "start_time": "2025-05-01T04:48:30.539Z"
+   },
+   {
+    "duration": 112,
+    "start_time": "2025-05-01T04:48:30.583Z"
+   },
+   {
+    "duration": 154,
+    "start_time": "2025-05-01T04:48:30.696Z"
+   },
+   {
+    "duration": 164,
+    "start_time": "2025-05-01T04:48:30.851Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T04:48:31.016Z"
+   },
+   {
+    "duration": 1650,
+    "start_time": "2025-05-01T04:48:31.024Z"
+   },
+   {
+    "duration": 155,
+    "start_time": "2025-05-01T04:56:12.172Z"
+   },
+   {
+    "duration": 162,
+    "start_time": "2025-05-01T04:56:30.235Z"
+   },
+   {
+    "duration": 228,
+    "start_time": "2025-05-01T04:56:54.160Z"
+   },
+   {
+    "duration": 175,
+    "start_time": "2025-05-01T04:57:12.409Z"
+   },
+   {
+    "duration": 156,
+    "start_time": "2025-05-01T04:58:26.011Z"
+   },
+   {
+    "duration": 688,
+    "start_time": "2025-05-01T05:10:10.525Z"
+   },
+   {
+    "duration": 26,
+    "start_time": "2025-05-01T05:10:11.215Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T05:10:11.242Z"
+   },
+   {
+    "duration": 19,
+    "start_time": "2025-05-01T05:10:11.257Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-01T05:10:11.278Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-01T05:10:11.284Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T05:10:11.303Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-01T05:10:11.312Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-01T05:10:11.324Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-01T05:10:11.334Z"
+   },
+   {
+    "duration": 211,
+    "start_time": "2025-05-01T05:10:11.353Z"
+   },
+   {
+    "duration": 141,
+    "start_time": "2025-05-01T05:10:11.566Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T05:10:11.709Z"
+   },
+   {
+    "duration": 1694,
+    "start_time": "2025-05-01T05:10:11.716Z"
+   },
+   {
+    "duration": 195,
+    "start_time": "2025-05-01T05:11:43.073Z"
+   },
+   {
+    "duration": 330,
+    "start_time": "2025-05-01T05:11:52.559Z"
+   },
+   {
+    "duration": 196,
+    "start_time": "2025-05-01T05:11:55.496Z"
+   },
+   {
+    "duration": 180,
+    "start_time": "2025-05-01T05:16:14.735Z"
+   },
+   {
+    "duration": 194,
+    "start_time": "2025-05-01T05:16:18.797Z"
+   },
+   {
+    "duration": 474,
+    "start_time": "2025-05-01T05:24:53.861Z"
+   },
+   {
+    "duration": 1181,
+    "start_time": "2025-05-01T05:26:06.711Z"
+   },
+   {
+    "duration": 37,
+    "start_time": "2025-05-01T05:26:07.894Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T05:26:07.933Z"
+   },
+   {
+    "duration": 19,
+    "start_time": "2025-05-01T05:26:07.949Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T05:26:07.971Z"
+   },
+   {
+    "duration": 32,
+    "start_time": "2025-05-01T05:26:07.984Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T05:26:08.018Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T05:26:08.031Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-01T05:26:08.038Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T05:26:08.049Z"
+   },
+   {
+    "duration": 246,
+    "start_time": "2025-05-01T05:26:08.063Z"
+   },
+   {
+    "duration": 135,
+    "start_time": "2025-05-01T05:26:08.311Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T05:26:08.448Z"
+   },
+   {
+    "duration": 1693,
+    "start_time": "2025-05-01T05:26:08.456Z"
+   },
+   {
+    "duration": 1156,
+    "start_time": "2025-05-01T05:26:25.536Z"
+   },
+   {
+    "duration": 26,
+    "start_time": "2025-05-01T05:26:26.694Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T05:26:26.722Z"
+   },
+   {
+    "duration": 102,
+    "start_time": "2025-05-01T05:26:26.737Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T05:26:26.842Z"
+   },
+   {
+    "duration": 31,
+    "start_time": "2025-05-01T05:26:26.855Z"
+   },
+   {
+    "duration": 20,
+    "start_time": "2025-05-01T05:26:26.888Z"
+   },
+   {
+    "duration": 29,
+    "start_time": "2025-05-01T05:26:26.909Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T05:26:26.940Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T05:26:26.952Z"
+   },
+   {
+    "duration": 207,
+    "start_time": "2025-05-01T05:26:26.965Z"
+   },
+   {
+    "duration": 142,
+    "start_time": "2025-05-01T05:26:27.173Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T05:26:27.317Z"
+   },
+   {
+    "duration": 1561,
+    "start_time": "2025-05-01T05:26:27.325Z"
+   },
+   {
+    "duration": 1173,
+    "start_time": "2025-05-01T05:37:58.269Z"
+   },
+   {
+    "duration": 38,
+    "start_time": "2025-05-01T05:37:59.444Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T05:37:59.484Z"
+   },
+   {
+    "duration": 44,
+    "start_time": "2025-05-01T05:37:59.500Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-01T05:37:59.546Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T05:37:59.556Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T05:37:59.571Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T05:37:59.585Z"
+   },
+   {
+    "duration": 24,
+    "start_time": "2025-05-01T05:37:59.591Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T05:37:59.618Z"
+   },
+   {
+    "duration": 228,
+    "start_time": "2025-05-01T05:37:59.632Z"
+   },
+   {
+    "duration": 146,
+    "start_time": "2025-05-01T05:37:59.861Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T05:38:00.009Z"
+   },
+   {
+    "duration": 1726,
+    "start_time": "2025-05-01T05:38:00.016Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T05:40:43.196Z"
+   },
+   {
+    "duration": 104,
+    "start_time": "2025-05-01T05:48:47.444Z"
+   },
+   {
+    "duration": 33,
+    "start_time": "2025-05-01T05:49:20.321Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-01T05:49:45.770Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-01T05:49:48.432Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T05:49:52.006Z"
+   },
+   {
+    "duration": 33,
+    "start_time": "2025-05-01T05:49:53.670Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-01T05:50:15.459Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T05:50:16.558Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T05:57:28.533Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T05:57:39.319Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-01T05:57:52.947Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T06:20:29.983Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T06:21:28.627Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-01T06:22:54.535Z"
+   },
+   {
+    "duration": 1211,
+    "start_time": "2025-05-01T06:22:59.193Z"
+   },
+   {
+    "duration": 26,
+    "start_time": "2025-05-01T06:23:00.406Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-01T06:23:00.434Z"
+   },
+   {
+    "duration": 20,
+    "start_time": "2025-05-01T06:23:00.451Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T06:23:00.473Z"
+   },
+   {
+    "duration": 46,
+    "start_time": "2025-05-01T06:23:00.488Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-01T06:23:00.536Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T06:23:00.557Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-01T06:23:00.564Z"
+   },
+   {
+    "duration": 37,
+    "start_time": "2025-05-01T06:23:00.583Z"
+   },
+   {
+    "duration": 223,
+    "start_time": "2025-05-01T06:23:00.622Z"
+   },
+   {
+    "duration": 146,
+    "start_time": "2025-05-01T06:23:00.847Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T06:23:00.995Z"
+   },
+   {
+    "duration": 27,
+    "start_time": "2025-05-01T06:23:01.010Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T06:23:01.039Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T06:23:01.054Z"
+   },
+   {
+    "duration": 1825,
+    "start_time": "2025-05-01T06:23:01.063Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T06:23:58.003Z"
+   },
+   {
+    "duration": 77,
+    "start_time": "2025-05-01T06:28:27.453Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T06:28:29.292Z"
+   },
+   {
+    "duration": 1207,
+    "start_time": "2025-05-01T06:42:10.798Z"
+   },
+   {
+    "duration": 26,
+    "start_time": "2025-05-01T06:42:12.007Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T06:42:12.035Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-01T06:42:12.050Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T06:42:12.070Z"
+   },
+   {
+    "duration": 25,
+    "start_time": "2025-05-01T06:42:12.077Z"
+   },
+   {
+    "duration": 42,
+    "start_time": "2025-05-01T06:42:12.104Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-01T06:42:12.148Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-01T06:42:12.165Z"
+   },
+   {
+    "duration": 27,
+    "start_time": "2025-05-01T06:42:12.185Z"
+   },
+   {
+    "duration": 23,
+    "start_time": "2025-05-01T06:42:12.214Z"
+   },
+   {
+    "duration": 221,
+    "start_time": "2025-05-01T06:42:12.239Z"
+   },
+   {
+    "duration": 147,
+    "start_time": "2025-05-01T06:42:12.462Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T06:42:12.612Z"
+   },
+   {
+    "duration": 22,
+    "start_time": "2025-05-01T06:42:12.620Z"
+   },
+   {
+    "duration": 19,
+    "start_time": "2025-05-01T06:42:12.644Z"
+   },
+   {
+    "duration": 1656,
+    "start_time": "2025-05-01T06:42:12.665Z"
+   },
+   {
+    "duration": 205,
+    "start_time": "2025-05-01T06:42:51.283Z"
+   },
+   {
+    "duration": 202,
+    "start_time": "2025-05-01T06:43:26.246Z"
+   },
+   {
+    "duration": 270,
+    "start_time": "2025-05-01T06:43:51.993Z"
+   },
+   {
+    "duration": 376,
+    "start_time": "2025-05-01T06:44:20.031Z"
+   },
+   {
+    "duration": 405,
+    "start_time": "2025-05-01T06:44:25.131Z"
+   },
+   {
+    "duration": 321,
+    "start_time": "2025-05-01T06:44:33.832Z"
+   },
+   {
+    "duration": 324,
+    "start_time": "2025-05-01T06:45:30.294Z"
+   },
+   {
+    "duration": 332,
+    "start_time": "2025-05-01T06:45:40.113Z"
+   },
+   {
+    "duration": 323,
+    "start_time": "2025-05-01T06:46:34.084Z"
+   },
+   {
+    "duration": 433,
+    "start_time": "2025-05-01T06:46:40.921Z"
+   },
+   {
+    "duration": 319,
+    "start_time": "2025-05-01T06:46:49.331Z"
+   },
+   {
+    "duration": 317,
+    "start_time": "2025-05-01T06:46:56.706Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-01T06:51:11.006Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-01T06:51:21.607Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T06:52:28.932Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T06:52:48.894Z"
+   },
+   {
+    "duration": 97,
+    "start_time": "2025-05-01T06:53:15.193Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T06:53:17.456Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-01T06:53:23.594Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T06:53:30.797Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T07:01:18.374Z"
+   },
+   {
+    "duration": 1196,
+    "start_time": "2025-05-01T07:06:25.795Z"
+   },
+   {
+    "duration": 26,
+    "start_time": "2025-05-01T07:06:26.994Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T07:06:27.022Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-01T07:06:27.037Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-01T07:06:27.055Z"
+   },
+   {
+    "duration": 28,
+    "start_time": "2025-05-01T07:06:27.061Z"
+   },
+   {
+    "duration": 47,
+    "start_time": "2025-05-01T07:06:27.091Z"
+   },
+   {
+    "duration": 79,
+    "start_time": "2025-05-01T07:06:27.140Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T07:06:27.221Z"
+   },
+   {
+    "duration": 34,
+    "start_time": "2025-05-01T07:06:27.237Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-01T07:06:27.273Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-01T07:06:27.283Z"
+   },
+   {
+    "duration": 340,
+    "start_time": "2025-05-01T07:06:27.303Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T07:06:27.646Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T07:06:27.653Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T07:06:27.667Z"
+   },
+   {
+    "duration": 1672,
+    "start_time": "2025-05-01T07:06:27.674Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T07:21:04.116Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T07:21:07.988Z"
+   },
+   {
+    "duration": 104,
+    "start_time": "2025-05-01T07:21:16.214Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T07:23:18.338Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T07:23:32.576Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T07:23:43.679Z"
+   },
+   {
+    "duration": 1581,
+    "start_time": "2025-05-01T07:23:55.667Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T07:25:26.638Z"
+   },
+   {
+    "duration": 119,
+    "start_time": "2025-05-01T07:25:52.551Z"
+   },
+   {
+    "duration": 1275,
+    "start_time": "2025-05-01T10:29:42.841Z"
+   },
+   {
+    "duration": 43,
+    "start_time": "2025-05-01T10:29:44.118Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-01T10:29:44.163Z"
+   },
+   {
+    "duration": 21,
+    "start_time": "2025-05-01T10:29:44.181Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T10:29:44.204Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T10:29:44.211Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-01T10:29:44.223Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-01T10:29:44.241Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-01T10:29:44.252Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T10:29:44.265Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T10:29:44.278Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T10:29:44.285Z"
+   },
+   {
+    "duration": 376,
+    "start_time": "2025-05-01T10:29:44.291Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T10:29:44.669Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T10:29:44.676Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T10:29:44.689Z"
+   },
+   {
+    "duration": 1486,
+    "start_time": "2025-05-01T10:29:44.696Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T10:29:46.184Z"
+   },
+   {
+    "duration": 118,
+    "start_time": "2025-05-01T10:29:46.197Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T10:32:25.057Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T10:32:37.948Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-01T10:42:28.284Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T10:42:54.843Z"
+   },
+   {
+    "duration": 51,
+    "start_time": "2025-05-01T10:44:22.520Z"
+   },
+   {
+    "duration": 1225,
+    "start_time": "2025-05-01T10:53:30.431Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T10:53:38.445Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T10:55:08.306Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T10:55:14.706Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T10:55:29.947Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-01T10:55:32.581Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-01T10:56:33.706Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T10:56:43.357Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T11:00:13.342Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-01T11:00:16.130Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-01T11:00:23.746Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-01T11:00:26.943Z"
+   },
+   {
+    "duration": 1023,
+    "start_time": "2025-05-01T11:03:48.269Z"
+   },
+   {
+    "duration": 34,
+    "start_time": "2025-05-01T11:03:49.294Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T11:03:49.330Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T11:03:49.344Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-01T11:03:49.360Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T11:03:49.364Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-01T11:03:49.373Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T11:03:49.379Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T11:03:49.387Z"
+   },
+   {
+    "duration": 34,
+    "start_time": "2025-05-01T11:03:49.402Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:03:49.438Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T11:03:49.444Z"
+   },
+   {
+    "duration": 317,
+    "start_time": "2025-05-01T11:03:49.451Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:03:49.770Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T11:03:49.776Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:03:49.788Z"
+   },
+   {
+    "duration": 1408,
+    "start_time": "2025-05-01T11:03:49.794Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T11:03:51.204Z"
+   },
+   {
+    "duration": 112,
+    "start_time": "2025-05-01T11:03:51.218Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-01T11:03:51.335Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T11:03:51.346Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T11:03:51.359Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-01T11:03:51.367Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T11:03:51.372Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-01T11:06:38.502Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T11:06:49.825Z"
+   },
+   {
+    "duration": 115,
+    "start_time": "2025-05-01T11:22:43.198Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-01T11:22:50.098Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-01T11:22:53.586Z"
+   },
+   {
+    "duration": 1104,
+    "start_time": "2025-05-01T11:25:06.687Z"
+   },
+   {
+    "duration": 24,
+    "start_time": "2025-05-01T11:25:07.795Z"
+   },
+   {
+    "duration": 17,
+    "start_time": "2025-05-01T11:25:07.821Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T11:25:07.839Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-01T11:25:07.855Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-01T11:25:07.860Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:25:07.869Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:25:07.875Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T11:25:07.882Z"
+   },
+   {
+    "duration": 41,
+    "start_time": "2025-05-01T11:25:07.896Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-01T11:25:07.939Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T11:25:07.948Z"
+   },
+   {
+    "duration": 312,
+    "start_time": "2025-05-01T11:25:07.955Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T11:25:08.269Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-01T11:25:08.277Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T11:25:08.297Z"
+   },
+   {
+    "duration": 1422,
+    "start_time": "2025-05-01T11:25:08.311Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T11:25:09.736Z"
+   },
+   {
+    "duration": 125,
+    "start_time": "2025-05-01T11:25:09.752Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-01T11:25:09.879Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T11:25:09.891Z"
+   },
+   {
+    "duration": 32,
+    "start_time": "2025-05-01T11:25:09.906Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:25:09.940Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T11:25:09.947Z"
+   },
+   {
+    "duration": 80,
+    "start_time": "2025-05-01T11:25:09.956Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T11:25:10.037Z"
+   },
+   {
+    "duration": 1518,
+    "start_time": "2025-05-01T11:27:24.140Z"
+   },
+   {
+    "duration": 63,
+    "start_time": "2025-05-01T11:27:30.165Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-01T11:27:33.016Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:28:47.593Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T11:28:49.992Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T11:29:05.042Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-01T11:29:45.816Z"
+   },
+   {
+    "duration": 290,
+    "start_time": "2025-05-01T11:29:52.647Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-01T11:29:56.743Z"
+   },
+   {
+    "duration": 1445,
+    "start_time": "2025-05-01T11:30:41.515Z"
+   },
+   {
+    "duration": 250,
+    "start_time": "2025-05-01T11:30:56.979Z"
+   },
+   {
+    "duration": 21,
+    "start_time": "2025-05-01T11:30:59.991Z"
+   },
+   {
+    "duration": 1097,
+    "start_time": "2025-05-01T11:31:06.803Z"
+   },
+   {
+    "duration": 24,
+    "start_time": "2025-05-01T11:31:07.902Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T11:31:07.928Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-01T11:31:07.944Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-01T11:31:07.960Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-01T11:31:07.966Z"
+   },
+   {
+    "duration": 69,
+    "start_time": "2025-05-01T11:31:07.976Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-01T11:31:08.047Z"
+   },
+   {
+    "duration": 17,
+    "start_time": "2025-05-01T11:31:08.057Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-01T11:31:08.077Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T11:31:08.094Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T11:31:08.101Z"
+   },
+   {
+    "duration": 298,
+    "start_time": "2025-05-01T11:31:08.110Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:31:08.410Z"
+   },
+   {
+    "duration": 22,
+    "start_time": "2025-05-01T11:31:08.416Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:31:08.439Z"
+   },
+   {
+    "duration": 1350,
+    "start_time": "2025-05-01T11:31:08.445Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T11:31:09.797Z"
+   },
+   {
+    "duration": 117,
+    "start_time": "2025-05-01T11:31:09.810Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-01T11:31:09.928Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T11:31:09.946Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T11:31:09.959Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-01T11:31:09.966Z"
+   },
+   {
+    "duration": 61,
+    "start_time": "2025-05-01T11:31:09.971Z"
+   },
+   {
+    "duration": 79,
+    "start_time": "2025-05-01T11:31:10.034Z"
+   },
+   {
+    "duration": 300,
+    "start_time": "2025-05-01T11:31:10.115Z"
+   },
+   {
+    "duration": 26,
+    "start_time": "2025-05-01T11:31:10.417Z"
+   },
+   {
+    "duration": 1805,
+    "start_time": "2025-05-01T11:33:29.019Z"
+   },
+   {
+    "duration": 1067,
+    "start_time": "2025-05-01T11:33:37.333Z"
+   },
+   {
+    "duration": 24,
+    "start_time": "2025-05-01T11:33:38.402Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T11:33:38.427Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-01T11:33:38.442Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-01T11:33:38.458Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T11:33:38.475Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:33:38.484Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:33:38.490Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-01T11:33:38.496Z"
+   },
+   {
+    "duration": 31,
+    "start_time": "2025-05-01T11:33:38.506Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T11:33:38.539Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:33:38.546Z"
+   },
+   {
+    "duration": 310,
+    "start_time": "2025-05-01T11:33:38.552Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T11:33:38.863Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-01T11:33:38.870Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:33:38.881Z"
+   },
+   {
+    "duration": 1424,
+    "start_time": "2025-05-01T11:33:38.887Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T11:33:40.312Z"
+   },
+   {
+    "duration": 117,
+    "start_time": "2025-05-01T11:33:40.335Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-01T11:33:40.453Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T11:33:40.465Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T11:33:40.478Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-01T11:33:40.486Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T11:33:40.492Z"
+   },
+   {
+    "duration": 99,
+    "start_time": "2025-05-01T11:33:40.499Z"
+   },
+   {
+    "duration": 328,
+    "start_time": "2025-05-01T11:33:40.599Z"
+   },
+   {
+    "duration": 88,
+    "start_time": "2025-05-01T11:33:40.929Z"
+   },
+   {
+    "duration": 17,
+    "start_time": "2025-05-01T11:33:47.480Z"
+   },
+   {
+    "duration": 1532,
+    "start_time": "2025-05-01T11:34:08.042Z"
+   },
+   {
+    "duration": 17,
+    "start_time": "2025-05-01T11:34:09.758Z"
+   },
+   {
+    "duration": 1117,
+    "start_time": "2025-05-01T11:34:16.098Z"
+   },
+   {
+    "duration": 25,
+    "start_time": "2025-05-01T11:34:17.217Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-01T11:34:17.243Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-01T11:34:17.259Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-01T11:34:17.278Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T11:34:17.283Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T11:34:17.292Z"
+   },
+   {
+    "duration": 37,
+    "start_time": "2025-05-01T11:34:17.299Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-01T11:34:17.337Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T11:34:17.348Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T11:34:17.363Z"
+   },
+   {
+    "duration": 20,
+    "start_time": "2025-05-01T11:34:17.372Z"
+   },
+   {
+    "duration": 330,
+    "start_time": "2025-05-01T11:34:17.394Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-01T11:34:17.727Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T11:34:17.738Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:34:17.753Z"
+   },
+   {
+    "duration": 1512,
+    "start_time": "2025-05-01T11:34:17.760Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T11:34:19.273Z"
+   },
+   {
+    "duration": 115,
+    "start_time": "2025-05-01T11:34:19.287Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-01T11:34:19.404Z"
+   },
+   {
+    "duration": 26,
+    "start_time": "2025-05-01T11:34:19.415Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T11:34:19.442Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-01T11:34:19.450Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-01T11:34:19.455Z"
+   },
+   {
+    "duration": 89,
+    "start_time": "2025-05-01T11:34:19.465Z"
+   },
+   {
+    "duration": 300,
+    "start_time": "2025-05-01T11:34:19.556Z"
+   },
+   {
+    "duration": 17,
+    "start_time": "2025-05-01T11:34:19.858Z"
+   },
+   {
+    "duration": 126,
+    "start_time": "2025-05-01T11:34:51.531Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-01T11:34:55.617Z"
+   },
+   {
+    "duration": 30,
+    "start_time": "2025-05-01T11:42:21.675Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-01T11:42:32.749Z"
+   },
+   {
+    "duration": 55,
+    "start_time": "2025-05-01T11:42:35.285Z"
+   },
+   {
+    "duration": 2062,
+    "start_time": "2025-05-01T11:57:43.845Z"
+   },
+   {
+    "duration": 1107,
+    "start_time": "2025-05-01T11:57:54.656Z"
+   },
+   {
+    "duration": 35,
+    "start_time": "2025-05-01T11:57:55.765Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T11:57:55.801Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-01T11:57:55.817Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:57:55.833Z"
+   },
+   {
+    "duration": 17,
+    "start_time": "2025-05-01T11:57:55.840Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:57:55.859Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-01T11:57:55.866Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-01T11:57:55.871Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-01T11:57:55.881Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-01T11:57:55.893Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-01T11:57:55.900Z"
+   },
+   {
+    "duration": 344,
+    "start_time": "2025-05-01T11:57:55.905Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T11:57:56.251Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T11:57:56.258Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-01T11:57:56.271Z"
+   },
+   {
+    "duration": 1532,
+    "start_time": "2025-05-01T11:57:56.279Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-01T11:57:57.813Z"
+   },
+   {
+    "duration": 142,
+    "start_time": "2025-05-01T11:57:57.826Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-01T11:57:57.970Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-01T11:57:57.981Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-01T11:57:57.995Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-01T11:57:58.003Z"
+   },
+   {
+    "duration": 30,
+    "start_time": "2025-05-01T11:57:58.009Z"
+   },
+   {
+    "duration": 78,
+    "start_time": "2025-05-01T11:57:58.040Z"
+   },
+   {
+    "duration": 479,
+    "start_time": "2025-05-01T11:57:58.120Z"
+   },
+   {
+    "duration": 1280,
+    "start_time": "2025-05-02T05:00:38.770Z"
+   },
+   {
+    "duration": 35,
+    "start_time": "2025-05-02T05:00:40.052Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-02T05:00:40.092Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-02T05:00:40.108Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-02T05:00:40.124Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-02T05:00:40.129Z"
+   },
+   {
+    "duration": 32,
+    "start_time": "2025-05-02T05:00:40.140Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-02T05:00:40.174Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-02T05:00:40.191Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-02T05:00:40.201Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-02T05:00:40.213Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-02T05:00:40.220Z"
+   },
+   {
+    "duration": 288,
+    "start_time": "2025-05-02T05:00:40.228Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-02T05:00:40.518Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-02T05:00:40.526Z"
+   },
+   {
+    "duration": 27,
+    "start_time": "2025-05-02T05:00:40.538Z"
+   },
+   {
+    "duration": 1547,
+    "start_time": "2025-05-02T05:00:40.567Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-02T05:00:42.116Z"
+   },
+   {
+    "duration": 118,
+    "start_time": "2025-05-02T05:00:42.131Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-02T05:00:42.251Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-02T05:00:42.268Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-02T05:00:42.281Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-02T05:00:42.289Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-02T05:00:42.295Z"
+   },
+   {
+    "duration": 98,
+    "start_time": "2025-05-02T05:00:42.302Z"
+   },
+   {
+    "duration": 432,
+    "start_time": "2025-05-02T05:00:42.401Z"
+   },
+   {
+    "duration": 91,
+    "start_time": "2025-05-02T05:18:14.013Z"
+   },
+   {
+    "duration": 1759,
+    "start_time": "2025-05-02T05:18:17.328Z"
+   },
+   {
+    "duration": 1111,
+    "start_time": "2025-05-02T05:18:30.628Z"
+   },
+   {
+    "duration": 34,
+    "start_time": "2025-05-02T05:18:31.741Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-02T05:18:31.777Z"
+   },
+   {
+    "duration": 26,
+    "start_time": "2025-05-02T05:18:31.791Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-02T05:18:31.819Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-02T05:18:31.824Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-02T05:18:31.834Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-02T05:18:31.840Z"
+   },
+   {
+    "duration": 24,
+    "start_time": "2025-05-02T05:18:31.849Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-02T05:18:31.876Z"
+   },
+   {
+    "duration": 26,
+    "start_time": "2025-05-02T05:18:31.888Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-02T05:18:31.916Z"
+   },
+   {
+    "duration": 372,
+    "start_time": "2025-05-02T05:18:31.932Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-02T05:18:32.306Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-02T05:18:32.313Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-02T05:18:32.326Z"
+   },
+   {
+    "duration": 1452,
+    "start_time": "2025-05-02T05:18:32.332Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-02T05:18:33.786Z"
+   },
+   {
+    "duration": 117,
+    "start_time": "2025-05-02T05:18:33.800Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-02T05:18:33.918Z"
+   },
+   {
+    "duration": 74,
+    "start_time": "2025-05-02T05:18:33.930Z"
+   },
+   {
+    "duration": 21,
+    "start_time": "2025-05-02T05:18:34.006Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-02T05:18:34.029Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-02T05:18:34.034Z"
+   },
+   {
+    "duration": 69,
+    "start_time": "2025-05-02T05:18:34.043Z"
+   },
+   {
+    "duration": 440,
+    "start_time": "2025-05-02T05:18:34.114Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-02T05:30:34.152Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-02T05:31:20.334Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-02T05:31:27.547Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-02T05:35:12.010Z"
+   },
+   {
+    "duration": 123,
+    "start_time": "2025-05-02T05:35:49.738Z"
+   },
+   {
+    "duration": 86,
+    "start_time": "2025-05-02T05:35:57.642Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-02T05:36:03.370Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-02T05:37:41.577Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-02T05:37:50.874Z"
+   },
+   {
+    "duration": 2,
+    "start_time": "2025-05-02T05:39:53.994Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-02T05:40:00.773Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-02T05:40:04.492Z"
+   },
+   {
+    "duration": 89,
+    "start_time": "2025-05-02T05:41:48.970Z"
+   },
+   {
+    "duration": 1327,
+    "start_time": "2025-05-02T05:41:54.701Z"
+   },
+   {
+    "duration": 37,
+    "start_time": "2025-05-02T05:42:07.029Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-02T05:43:52.630Z"
+   },
+   {
+    "duration": 157,
+    "start_time": "2025-05-02T05:45:14.914Z"
+   },
+   {
+    "duration": 324,
+    "start_time": "2025-05-02T05:45:49.673Z"
+   },
+   {
+    "duration": 936,
+    "start_time": "2025-05-02T05:46:08.920Z"
+   },
+   {
+    "duration": 1169,
+    "start_time": "2025-05-02T05:46:32.747Z"
+   },
+   {
+    "duration": 25,
+    "start_time": "2025-05-02T05:46:33.918Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-02T05:46:33.945Z"
+   },
+   {
+    "duration": 23,
+    "start_time": "2025-05-02T05:46:33.962Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-02T05:46:33.987Z"
+   },
+   {
+    "duration": 27,
+    "start_time": "2025-05-02T05:46:33.996Z"
+   },
+   {
+    "duration": 17,
+    "start_time": "2025-05-02T05:46:34.024Z"
+   },
+   {
+    "duration": 92,
+    "start_time": "2025-05-02T05:46:34.043Z"
+   },
+   {
+    "duration": 36,
+    "start_time": "2025-05-02T05:46:34.136Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-02T05:46:34.174Z"
+   },
+   {
+    "duration": 31,
+    "start_time": "2025-05-02T05:46:34.186Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-02T05:46:34.219Z"
+   },
+   {
+    "duration": 314,
+    "start_time": "2025-05-02T05:46:34.237Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-02T05:46:34.552Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-02T05:46:34.566Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-02T05:46:34.582Z"
+   },
+   {
+    "duration": 1436,
+    "start_time": "2025-05-02T05:46:34.595Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-02T05:46:36.033Z"
+   },
+   {
+    "duration": 215,
+    "start_time": "2025-05-02T05:46:36.047Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-02T05:46:36.263Z"
+   },
+   {
+    "duration": 29,
+    "start_time": "2025-05-02T05:46:36.276Z"
+   },
+   {
+    "duration": 68,
+    "start_time": "2025-05-02T05:46:36.307Z"
+   },
+   {
+    "duration": 19,
+    "start_time": "2025-05-02T05:46:36.377Z"
+   },
+   {
+    "duration": 19,
+    "start_time": "2025-05-02T05:46:36.398Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-02T05:46:36.419Z"
+   },
+   {
+    "duration": 25,
+    "start_time": "2025-05-02T05:46:36.433Z"
+   },
+   {
+    "duration": 65,
+    "start_time": "2025-05-02T05:46:36.459Z"
+   },
+   {
+    "duration": 430,
+    "start_time": "2025-05-02T05:46:36.527Z"
+   },
+   {
+    "duration": 312,
+    "start_time": "2025-05-02T05:46:36.962Z"
+   },
+   {
+    "duration": 92,
+    "start_time": "2025-05-02T05:46:37.276Z"
+   },
+   {
+    "duration": 0,
+    "start_time": "2025-05-02T05:46:37.369Z"
+   },
+   {
+    "duration": 0,
+    "start_time": "2025-05-02T05:46:37.370Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-02T05:48:08.295Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-02T05:48:13.727Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-02T05:49:04.303Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-02T05:49:11.930Z"
+   },
+   {
+    "duration": 20,
+    "start_time": "2025-05-02T05:49:50.868Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-02T05:52:18.690Z"
+   },
+   {
+    "duration": 22,
+    "start_time": "2025-05-02T05:56:47.918Z"
+   },
+   {
+    "duration": 1093,
+    "start_time": "2025-05-02T05:56:53.227Z"
+   },
+   {
+    "duration": 25,
+    "start_time": "2025-05-02T05:56:54.322Z"
+   },
+   {
+    "duration": 22,
+    "start_time": "2025-05-02T05:56:54.349Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-02T05:56:54.374Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-02T05:56:54.390Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-02T05:56:54.396Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-02T05:56:54.404Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-02T05:56:54.412Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-02T05:56:54.418Z"
+   },
+   {
+    "duration": 41,
+    "start_time": "2025-05-02T05:56:54.429Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-02T05:56:54.471Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-02T05:56:54.478Z"
+   },
+   {
+    "duration": 301,
+    "start_time": "2025-05-02T05:56:54.485Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-02T05:56:54.788Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-02T05:56:54.794Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-02T05:56:54.805Z"
+   },
+   {
+    "duration": 1395,
+    "start_time": "2025-05-02T05:56:54.813Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-02T05:56:56.209Z"
+   },
+   {
+    "duration": 116,
+    "start_time": "2025-05-02T05:56:56.223Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-02T05:56:56.340Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-02T05:56:56.351Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-02T05:56:56.370Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-02T05:56:56.378Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-02T05:56:56.382Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-02T05:56:56.390Z"
+   },
+   {
+    "duration": 19,
+    "start_time": "2025-05-02T05:56:56.397Z"
+   },
+   {
+    "duration": 87,
+    "start_time": "2025-05-02T05:56:56.417Z"
+   },
+   {
+    "duration": 408,
+    "start_time": "2025-05-02T05:56:56.507Z"
+   },
+   {
+    "duration": 293,
+    "start_time": "2025-05-02T05:56:56.917Z"
+   },
+   {
+    "duration": 21,
+    "start_time": "2025-05-02T05:56:57.212Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-02T06:07:01.483Z"
+   },
+   {
+    "duration": 17,
+    "start_time": "2025-05-02T06:07:28.668Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-02T06:07:59.333Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-02T06:13:16.623Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-02T06:19:45.774Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-02T06:20:41.492Z"
+   },
+   {
+    "duration": 91,
+    "start_time": "2025-05-02T06:20:58.912Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-02T06:22:15.141Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-02T06:22:22.051Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-02T06:25:53.105Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-02T06:27:36.259Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-02T06:28:13.664Z"
+   },
+   {
+    "duration": 1434,
+    "start_time": "2025-05-02T19:17:00.834Z"
+   },
+   {
+    "duration": 37,
+    "start_time": "2025-05-02T19:17:02.270Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-02T19:17:02.308Z"
+   },
+   {
+    "duration": 40,
+    "start_time": "2025-05-02T19:17:02.323Z"
+   },
+   {
+    "duration": 20,
+    "start_time": "2025-05-02T19:17:02.365Z"
+   },
+   {
+    "duration": 45,
+    "start_time": "2025-05-02T19:17:02.387Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-02T19:17:02.434Z"
+   },
+   {
+    "duration": 34,
+    "start_time": "2025-05-02T19:17:02.454Z"
+   },
+   {
+    "duration": 39,
+    "start_time": "2025-05-02T19:17:02.490Z"
+   },
+   {
+    "duration": 41,
+    "start_time": "2025-05-02T19:17:02.531Z"
+   },
+   {
+    "duration": 46,
+    "start_time": "2025-05-02T19:17:02.574Z"
+   },
+   {
+    "duration": 30,
+    "start_time": "2025-05-02T19:17:02.622Z"
+   },
+   {
+    "duration": 400,
+    "start_time": "2025-05-02T19:17:02.654Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-02T19:17:03.055Z"
+   },
+   {
+    "duration": 40,
+    "start_time": "2025-05-02T19:17:03.062Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-02T19:17:03.103Z"
+   },
+   {
+    "duration": 1658,
+    "start_time": "2025-05-02T19:17:03.116Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-02T19:17:04.776Z"
+   },
+   {
+    "duration": 140,
+    "start_time": "2025-05-02T19:17:04.790Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-02T19:17:04.932Z"
+   },
+   {
+    "duration": 26,
+    "start_time": "2025-05-02T19:17:04.952Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-02T19:17:04.980Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-02T19:17:04.990Z"
+   },
+   {
+    "duration": 21,
+    "start_time": "2025-05-02T19:17:05.004Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-02T19:17:05.027Z"
+   },
+   {
+    "duration": 24,
+    "start_time": "2025-05-02T19:17:05.035Z"
+   },
+   {
+    "duration": 95,
+    "start_time": "2025-05-02T19:17:05.061Z"
+   },
+   {
+    "duration": 500,
+    "start_time": "2025-05-02T19:17:05.160Z"
+   },
+   {
+    "duration": 366,
+    "start_time": "2025-05-02T19:17:05.662Z"
+   },
+   {
+    "duration": 38,
+    "start_time": "2025-05-02T19:17:06.029Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-02T19:17:06.069Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-02T19:17:06.081Z"
+   },
+   {
+    "duration": 1161,
+    "start_time": "2025-05-02T19:24:56.170Z"
+   },
+   {
+    "duration": 30,
+    "start_time": "2025-05-02T19:24:57.333Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-02T19:24:57.364Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-02T19:24:57.377Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-02T19:24:57.395Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-02T19:24:57.400Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-02T19:24:57.412Z"
+   },
+   {
+    "duration": 23,
+    "start_time": "2025-05-02T19:24:57.425Z"
+   },
+   {
+    "duration": 22,
+    "start_time": "2025-05-02T19:24:57.450Z"
+   },
+   {
+    "duration": 22,
+    "start_time": "2025-05-02T19:24:57.474Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-02T19:24:57.498Z"
+   },
+   {
+    "duration": 47,
+    "start_time": "2025-05-02T19:24:57.506Z"
+   },
+   {
+    "duration": 388,
+    "start_time": "2025-05-02T19:24:57.555Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-02T19:24:57.953Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-02T19:24:57.961Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-02T19:24:57.973Z"
+   },
+   {
+    "duration": 1693,
+    "start_time": "2025-05-02T19:24:57.979Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-02T19:24:59.674Z"
+   },
+   {
+    "duration": 132,
+    "start_time": "2025-05-02T19:24:59.690Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-02T19:24:59.824Z"
+   },
+   {
+    "duration": 27,
+    "start_time": "2025-05-02T19:24:59.835Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-02T19:24:59.863Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-02T19:24:59.879Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-02T19:24:59.885Z"
+   },
+   {
+    "duration": 33,
+    "start_time": "2025-05-02T19:24:59.899Z"
+   },
+   {
+    "duration": 31,
+    "start_time": "2025-05-02T19:24:59.934Z"
+   },
+   {
+    "duration": 86,
+    "start_time": "2025-05-02T19:24:59.966Z"
+   },
+   {
+    "duration": 567,
+    "start_time": "2025-05-02T19:25:00.054Z"
+   },
+   {
+    "duration": 351,
+    "start_time": "2025-05-02T19:25:00.623Z"
+   },
+   {
+    "duration": 25,
+    "start_time": "2025-05-02T19:25:00.976Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-02T19:25:01.003Z"
+   },
+   {
+    "duration": 50,
+    "start_time": "2025-05-02T19:25:01.022Z"
+   },
+   {
+    "duration": 1250,
+    "start_time": "2025-05-04T17:06:58.869Z"
+   },
+   {
+    "duration": 75,
+    "start_time": "2025-05-04T17:07:00.120Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:07:00.196Z"
+   },
+   {
+    "duration": 44,
+    "start_time": "2025-05-04T17:07:00.210Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T17:07:00.255Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-04T17:07:00.261Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-04T17:07:00.270Z"
+   },
+   {
+    "duration": 31,
+    "start_time": "2025-05-04T17:07:00.279Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-04T17:07:00.312Z"
+   },
+   {
+    "duration": 25,
+    "start_time": "2025-05-04T17:07:00.324Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:07:00.351Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-04T17:07:00.359Z"
+   },
+   {
+    "duration": 319,
+    "start_time": "2025-05-04T17:07:00.371Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:07:00.692Z"
+   },
+   {
+    "duration": 33,
+    "start_time": "2025-05-04T17:07:00.700Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T17:07:00.736Z"
+   },
+   {
+    "duration": 1552,
+    "start_time": "2025-05-04T17:07:00.743Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T17:07:02.296Z"
+   },
+   {
+    "duration": 125,
+    "start_time": "2025-05-04T17:07:02.310Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-04T17:07:02.437Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:07:02.448Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-04T17:07:02.461Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:07:02.470Z"
+   },
+   {
+    "duration": 28,
+    "start_time": "2025-05-04T17:07:02.483Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-04T17:07:02.513Z"
+   },
+   {
+    "duration": 22,
+    "start_time": "2025-05-04T17:07:02.523Z"
+   },
+   {
+    "duration": 89,
+    "start_time": "2025-05-04T17:07:02.547Z"
+   },
+   {
+    "duration": 481,
+    "start_time": "2025-05-04T17:07:02.639Z"
+   },
+   {
+    "duration": 331,
+    "start_time": "2025-05-04T17:07:03.121Z"
+   },
+   {
+    "duration": 21,
+    "start_time": "2025-05-04T17:07:03.454Z"
+   },
+   {
+    "duration": 19,
+    "start_time": "2025-05-04T17:07:03.477Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T17:07:03.498Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-04T17:07:13.253Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-04T17:10:17.252Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-04T17:10:27.326Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:16:57.517Z"
+   },
+   {
+    "duration": 120,
+    "start_time": "2025-05-04T17:17:49.013Z"
+   },
+   {
+    "duration": 115,
+    "start_time": "2025-05-04T17:18:25.389Z"
+   },
+   {
+    "duration": 120,
+    "start_time": "2025-05-04T17:18:39.727Z"
+   },
+   {
+    "duration": 118,
+    "start_time": "2025-05-04T17:18:44.488Z"
+   },
+   {
+    "duration": 118,
+    "start_time": "2025-05-04T17:18:47.178Z"
+   },
+   {
+    "duration": 125,
+    "start_time": "2025-05-04T17:19:25.567Z"
+   },
+   {
+    "duration": 127,
+    "start_time": "2025-05-04T17:19:38.442Z"
+   },
+   {
+    "duration": 205,
+    "start_time": "2025-05-04T17:19:42.229Z"
+   },
+   {
+    "duration": 203,
+    "start_time": "2025-05-04T17:22:15.576Z"
+   },
+   {
+    "duration": 132,
+    "start_time": "2025-05-04T17:22:24.715Z"
+   },
+   {
+    "duration": 130,
+    "start_time": "2025-05-04T17:22:27.864Z"
+   },
+   {
+    "duration": 80,
+    "start_time": "2025-05-04T17:23:14.864Z"
+   },
+   {
+    "duration": 75,
+    "start_time": "2025-05-04T17:23:18.177Z"
+   },
+   {
+    "duration": 75,
+    "start_time": "2025-05-04T17:23:25.727Z"
+   },
+   {
+    "duration": 70,
+    "start_time": "2025-05-04T17:23:30.863Z"
+   },
+   {
+    "duration": 68,
+    "start_time": "2025-05-04T17:23:34.327Z"
+   },
+   {
+    "duration": 73,
+    "start_time": "2025-05-04T17:23:36.530Z"
+   },
+   {
+    "duration": 145,
+    "start_time": "2025-05-04T17:24:01.588Z"
+   },
+   {
+    "duration": 137,
+    "start_time": "2025-05-04T17:24:07.189Z"
+   },
+   {
+    "duration": 146,
+    "start_time": "2025-05-04T17:24:12.764Z"
+   },
+   {
+    "duration": 143,
+    "start_time": "2025-05-04T17:24:15.351Z"
+   },
+   {
+    "duration": 140,
+    "start_time": "2025-05-04T17:24:17.951Z"
+   },
+   {
+    "duration": 128,
+    "start_time": "2025-05-04T17:24:25.042Z"
+   },
+   {
+    "duration": 128,
+    "start_time": "2025-05-04T17:24:27.766Z"
+   },
+   {
+    "duration": 212,
+    "start_time": "2025-05-04T17:24:32.990Z"
+   },
+   {
+    "duration": 138,
+    "start_time": "2025-05-04T17:24:56.501Z"
+   },
+   {
+    "duration": 122,
+    "start_time": "2025-05-04T17:25:22.094Z"
+   },
+   {
+    "duration": 128,
+    "start_time": "2025-05-04T17:25:24.664Z"
+   },
+   {
+    "duration": 111,
+    "start_time": "2025-05-04T17:26:05.314Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T17:26:07.478Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-04T17:26:11.551Z"
+   },
+   {
+    "duration": 1247,
+    "start_time": "2025-05-04T17:26:27.043Z"
+   },
+   {
+    "duration": 1128,
+    "start_time": "2025-05-04T17:26:41.615Z"
+   },
+   {
+    "duration": 1234,
+    "start_time": "2025-05-04T17:26:50.289Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-04T17:26:56.040Z"
+   },
+   {
+    "duration": 17,
+    "start_time": "2025-05-04T17:26:59.903Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-04T17:27:08.687Z"
+   },
+   {
+    "duration": 1224,
+    "start_time": "2025-05-04T17:27:22.302Z"
+   },
+   {
+    "duration": 1158,
+    "start_time": "2025-05-04T17:27:30.388Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T17:27:33.951Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-04T17:29:06.890Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-04T17:30:02.212Z"
+   },
+   {
+    "duration": 1136,
+    "start_time": "2025-05-04T17:30:08.351Z"
+   },
+   {
+    "duration": 1230,
+    "start_time": "2025-05-04T17:30:13.867Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-04T17:30:19.658Z"
+   },
+   {
+    "duration": 23,
+    "start_time": "2025-05-04T17:33:15.952Z"
+   },
+   {
+    "duration": 22,
+    "start_time": "2025-05-04T17:33:18.813Z"
+   },
+   {
+    "duration": 24,
+    "start_time": "2025-05-04T17:33:20.502Z"
+   },
+   {
+    "duration": 24,
+    "start_time": "2025-05-04T17:33:23.079Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-04T17:33:28.952Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-04T17:33:31.952Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-04T17:33:34.702Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-04T17:33:37.190Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-04T17:33:44.063Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-04T17:33:47.189Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T17:33:49.999Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T17:33:52.612Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T17:33:54.727Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T17:33:56.939Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T17:33:59.013Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-04T17:34:02.164Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-04T17:34:05.531Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-04T17:34:07.052Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-04T17:34:46.239Z"
+   },
+   {
+    "duration": 26,
+    "start_time": "2025-05-04T17:35:20.037Z"
+   },
+   {
+    "duration": 1230,
+    "start_time": "2025-05-04T17:35:36.153Z"
+   },
+   {
+    "duration": 68,
+    "start_time": "2025-05-04T17:35:45.563Z"
+   },
+   {
+    "duration": 17,
+    "start_time": "2025-05-04T17:35:49.664Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-04T17:35:54.588Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T17:37:11.462Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:41:33.117Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T17:42:17.436Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T17:43:57.998Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T17:44:03.355Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T17:44:20.276Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:44:23.927Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T17:44:29.240Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T17:44:35.138Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T17:45:26.463Z"
+   },
+   {
+    "duration": 1062,
+    "start_time": "2025-05-04T17:45:32.785Z"
+   },
+   {
+    "duration": 25,
+    "start_time": "2025-05-04T17:45:33.848Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T17:45:33.875Z"
+   },
+   {
+    "duration": 21,
+    "start_time": "2025-05-04T17:45:33.890Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T17:45:33.912Z"
+   },
+   {
+    "duration": 21,
+    "start_time": "2025-05-04T17:45:33.917Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:45:33.939Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T17:45:33.946Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-04T17:45:33.952Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:45:33.961Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:45:33.975Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T17:45:33.982Z"
+   },
+   {
+    "duration": 354,
+    "start_time": "2025-05-04T17:45:33.988Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:45:34.343Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-04T17:45:34.350Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T17:45:34.361Z"
+   },
+   {
+    "duration": 1443,
+    "start_time": "2025-05-04T17:45:34.367Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-04T17:45:35.812Z"
+   },
+   {
+    "duration": 124,
+    "start_time": "2025-05-04T17:45:35.835Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-04T17:45:35.961Z"
+   },
+   {
+    "duration": 20,
+    "start_time": "2025-05-04T17:45:35.972Z"
+   },
+   {
+    "duration": 43,
+    "start_time": "2025-05-04T17:45:35.994Z"
+   },
+   {
+    "duration": 17,
+    "start_time": "2025-05-04T17:45:36.039Z"
+   },
+   {
+    "duration": 19,
+    "start_time": "2025-05-04T17:45:36.058Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T17:45:36.078Z"
+   },
+   {
+    "duration": 25,
+    "start_time": "2025-05-04T17:45:36.092Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T17:45:36.119Z"
+   },
+   {
+    "duration": 67,
+    "start_time": "2025-05-04T17:45:36.135Z"
+   },
+   {
+    "duration": 480,
+    "start_time": "2025-05-04T17:45:36.203Z"
+   },
+   {
+    "duration": 331,
+    "start_time": "2025-05-04T17:45:36.684Z"
+   },
+   {
+    "duration": 29,
+    "start_time": "2025-05-04T17:45:37.016Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-04T17:45:37.047Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:45:37.051Z"
+   },
+   {
+    "duration": 114,
+    "start_time": "2025-05-04T17:45:47.711Z"
+   },
+   {
+    "duration": 82,
+    "start_time": "2025-05-04T17:45:49.222Z"
+   },
+   {
+    "duration": 1009,
+    "start_time": "2025-05-04T17:46:08.294Z"
+   },
+   {
+    "duration": 23,
+    "start_time": "2025-05-04T17:46:09.305Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-04T17:46:09.329Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T17:46:09.342Z"
+   },
+   {
+    "duration": 49,
+    "start_time": "2025-05-04T17:46:09.356Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:46:09.406Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T17:46:09.414Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T17:46:09.420Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-04T17:46:09.425Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-04T17:46:09.437Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T17:46:09.449Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T17:46:09.456Z"
+   },
+   {
+    "duration": 319,
+    "start_time": "2025-05-04T17:46:09.462Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T17:46:09.783Z"
+   },
+   {
+    "duration": 64,
+    "start_time": "2025-05-04T17:46:09.789Z"
+   },
+   {
+    "duration": 53,
+    "start_time": "2025-05-04T17:46:09.854Z"
+   },
+   {
+    "duration": 1371,
+    "start_time": "2025-05-04T17:46:09.909Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:46:11.281Z"
+   },
+   {
+    "duration": 117,
+    "start_time": "2025-05-04T17:46:11.294Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-04T17:46:11.413Z"
+   },
+   {
+    "duration": 19,
+    "start_time": "2025-05-04T17:46:11.423Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T17:46:11.443Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:46:11.457Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-04T17:46:11.471Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:46:11.476Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-04T17:46:11.483Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-04T17:46:11.491Z"
+   },
+   {
+    "duration": 86,
+    "start_time": "2025-05-04T17:46:11.504Z"
+   },
+   {
+    "duration": 474,
+    "start_time": "2025-05-04T17:46:11.592Z"
+   },
+   {
+    "duration": 320,
+    "start_time": "2025-05-04T17:46:12.068Z"
+   },
+   {
+    "duration": 21,
+    "start_time": "2025-05-04T17:46:12.390Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T17:46:12.413Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T17:46:12.435Z"
+   },
+   {
+    "duration": 1021,
+    "start_time": "2025-05-04T17:50:52.670Z"
+   },
+   {
+    "duration": 25,
+    "start_time": "2025-05-04T17:50:53.692Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:50:53.718Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T17:50:53.731Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-04T17:50:53.746Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:50:53.750Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T17:50:53.758Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T17:50:53.763Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-04T17:50:53.768Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-04T17:50:53.778Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T17:50:53.788Z"
+   },
+   {
+    "duration": 44,
+    "start_time": "2025-05-04T17:50:53.794Z"
+   },
+   {
+    "duration": 368,
+    "start_time": "2025-05-04T17:50:53.839Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T17:50:54.209Z"
+   },
+   {
+    "duration": 20,
+    "start_time": "2025-05-04T17:50:54.216Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T17:50:54.238Z"
+   },
+   {
+    "duration": 1541,
+    "start_time": "2025-05-04T17:50:54.244Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:50:55.787Z"
+   },
+   {
+    "duration": 155,
+    "start_time": "2025-05-04T17:50:55.800Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-04T17:50:55.956Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:50:55.968Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:50:55.982Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-04T17:50:55.990Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-04T17:50:55.999Z"
+   },
+   {
+    "duration": 29,
+    "start_time": "2025-05-04T17:50:56.009Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T17:50:56.040Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T17:50:56.046Z"
+   },
+   {
+    "duration": 91,
+    "start_time": "2025-05-04T17:50:56.063Z"
+   },
+   {
+    "duration": 440,
+    "start_time": "2025-05-04T17:50:56.155Z"
+   },
+   {
+    "duration": 313,
+    "start_time": "2025-05-04T17:50:56.596Z"
+   },
+   {
+    "duration": 28,
+    "start_time": "2025-05-04T17:50:56.911Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-04T17:50:56.941Z"
+   },
+   {
+    "duration": 28,
+    "start_time": "2025-05-04T17:50:56.958Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T17:52:02.860Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T17:52:16.073Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T17:52:18.811Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T17:52:27.597Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T17:52:27.974Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T17:52:28.324Z"
+   },
+   {
+    "duration": 1075,
+    "start_time": "2025-05-04T17:52:32.827Z"
+   },
+   {
+    "duration": 25,
+    "start_time": "2025-05-04T17:52:33.904Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:52:33.930Z"
+   },
+   {
+    "duration": 19,
+    "start_time": "2025-05-04T17:52:33.944Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:52:33.965Z"
+   },
+   {
+    "duration": 25,
+    "start_time": "2025-05-04T17:52:33.972Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:52:33.999Z"
+   },
+   {
+    "duration": 20,
+    "start_time": "2025-05-04T17:52:34.006Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-04T17:52:34.027Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-04T17:52:34.037Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T17:52:34.048Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-04T17:52:34.054Z"
+   },
+   {
+    "duration": 325,
+    "start_time": "2025-05-04T17:52:34.063Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T17:52:34.390Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T17:52:34.396Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-04T17:52:34.412Z"
+   },
+   {
+    "duration": 1379,
+    "start_time": "2025-05-04T17:52:34.422Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:52:35.803Z"
+   },
+   {
+    "duration": 203,
+    "start_time": "2025-05-04T17:52:35.817Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-04T17:52:36.021Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-04T17:52:36.038Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:52:36.051Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-04T17:52:36.058Z"
+   },
+   {
+    "duration": 27,
+    "start_time": "2025-05-04T17:52:36.067Z"
+   },
+   {
+    "duration": 21,
+    "start_time": "2025-05-04T17:52:36.096Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-04T17:52:36.119Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-04T17:52:36.128Z"
+   },
+   {
+    "duration": 74,
+    "start_time": "2025-05-04T17:52:36.146Z"
+   },
+   {
+    "duration": 467,
+    "start_time": "2025-05-04T17:52:36.222Z"
+   },
+   {
+    "duration": 318,
+    "start_time": "2025-05-04T17:52:36.690Z"
+   },
+   {
+    "duration": 29,
+    "start_time": "2025-05-04T17:52:37.010Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-04T17:52:37.041Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:52:37.046Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-04T17:53:35.971Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T17:53:56.020Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T17:54:00.856Z"
+   },
+   {
+    "duration": 1117,
+    "start_time": "2025-05-04T17:54:06.175Z"
+   },
+   {
+    "duration": 24,
+    "start_time": "2025-05-04T17:54:07.294Z"
+   },
+   {
+    "duration": 15,
+    "start_time": "2025-05-04T17:54:07.320Z"
+   },
+   {
+    "duration": 19,
+    "start_time": "2025-05-04T17:54:07.337Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T17:54:07.359Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:54:07.365Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T17:54:07.373Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:54:07.380Z"
+   },
+   {
+    "duration": 50,
+    "start_time": "2025-05-04T17:54:07.387Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:54:07.438Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T17:54:07.452Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T17:54:07.460Z"
+   },
+   {
+    "duration": 331,
+    "start_time": "2025-05-04T17:54:07.465Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T17:54:07.799Z"
+   },
+   {
+    "duration": 35,
+    "start_time": "2025-05-04T17:54:07.806Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T17:54:07.843Z"
+   },
+   {
+    "duration": 1507,
+    "start_time": "2025-05-04T17:54:07.849Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-04T17:54:09.358Z"
+   },
+   {
+    "duration": 114,
+    "start_time": "2025-05-04T17:54:09.371Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-04T17:54:09.487Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:54:09.498Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-04T17:54:09.511Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-04T17:54:09.535Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-04T17:54:09.544Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T17:54:09.549Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T17:54:09.555Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T17:54:09.562Z"
+   },
+   {
+    "duration": 97,
+    "start_time": "2025-05-04T17:54:09.575Z"
+   },
+   {
+    "duration": 443,
+    "start_time": "2025-05-04T17:54:09.674Z"
+   },
+   {
+    "duration": 280,
+    "start_time": "2025-05-04T17:54:10.118Z"
+   },
+   {
+    "duration": 19,
+    "start_time": "2025-05-04T17:54:10.400Z"
+   },
+   {
+    "duration": 16,
+    "start_time": "2025-05-04T17:54:10.421Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T17:54:10.438Z"
+   },
+   {
+    "duration": 1097,
+    "start_time": "2025-05-04T18:02:11.118Z"
+   },
+   {
+    "duration": 24,
+    "start_time": "2025-05-04T18:02:12.218Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-04T18:02:12.243Z"
+   },
+   {
+    "duration": 13,
+    "start_time": "2025-05-04T18:02:12.256Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T18:02:12.271Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-04T18:02:12.276Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-04T18:02:12.285Z"
+   },
+   {
+    "duration": 12,
+    "start_time": "2025-05-04T18:02:12.294Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-04T18:02:12.335Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-04T18:02:12.345Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T18:02:12.357Z"
+   },
+   {
+    "duration": 9,
+    "start_time": "2025-05-04T18:02:12.362Z"
+   },
+   {
+    "duration": 316,
+    "start_time": "2025-05-04T18:02:12.372Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T18:02:12.691Z"
+   },
+   {
+    "duration": 11,
+    "start_time": "2025-05-04T18:02:12.698Z"
+   },
+   {
+    "duration": 5,
+    "start_time": "2025-05-04T18:02:12.710Z"
+   },
+   {
+    "duration": 1583,
+    "start_time": "2025-05-04T18:02:12.736Z"
+   },
+   {
+    "duration": 17,
+    "start_time": "2025-05-04T18:02:14.321Z"
+   },
+   {
+    "duration": 122,
+    "start_time": "2025-05-04T18:02:14.340Z"
+   },
+   {
+    "duration": 10,
+    "start_time": "2025-05-04T18:02:14.463Z"
+   },
+   {
+    "duration": 14,
+    "start_time": "2025-05-04T18:02:14.474Z"
+   },
+   {
+    "duration": 7,
+    "start_time": "2025-05-04T18:02:14.490Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-04T18:02:14.499Z"
+   },
+   {
+    "duration": 28,
+    "start_time": "2025-05-04T18:02:14.509Z"
+   },
+   {
+    "duration": 6,
+    "start_time": "2025-05-04T18:02:14.539Z"
+   },
+   {
+    "duration": 8,
+    "start_time": "2025-05-04T18:02:14.547Z"
+   },
+   {
+    "duration": 18,
+    "start_time": "2025-05-04T18:02:14.556Z"
+   },
+   {
+    "duration": 81,
+    "start_time": "2025-05-04T18:02:14.576Z"
+   },
+   {
+    "duration": 467,
+    "start_time": "2025-05-04T18:02:14.659Z"
+   },
+   {
+    "duration": 289,
+    "start_time": "2025-05-04T18:02:15.128Z"
+   },
+   {
+    "duration": 29,
+    "start_time": "2025-05-04T18:02:15.419Z"
+   },
+   {
+    "duration": 3,
+    "start_time": "2025-05-04T18:02:15.450Z"
+   },
+   {
+    "duration": 4,
+    "start_time": "2025-05-04T18:02:15.455Z"
+   }
+  ],
+  "colab": {
+   "provenance": [],
+   "toc_visible": true
+  },
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.13.1"
+  },
+  "toc": {
+   "base_numbering": 1,
+   "nav_menu": {},
+   "number_sections": true,
+   "sideBar": true,
+   "skip_h1_title": true,
+   "title_cell": "Table of Contents",
+   "title_sidebar": "Contents",
+   "toc_cell": false,
+   "toc_position": {
+    "height": "calc(100% - 180px)",
+    "left": "10px",
+    "top": "150px",
+    "width": "233px"
+   },
+   "toc_section_display": true,
+   "toc_window_display": true
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
